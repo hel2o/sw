@@ -6,14 +6,13 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gaochao1/gosnmp"
+	"github.com/hel2o/gosnmp"
 )
 
 func MemUtilization(ip, community string, timeout, retry int) (int, error) {
 	vendor, err := SysVendor(ip, community, timeout)
 	method := "get"
 	var oid string
-
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println(ip+" Recovered in MemUtilization", r)
@@ -49,13 +48,16 @@ func MemUtilization(ip, community string, timeout, retry int) (int, error) {
 		return getCisco_IOS_XR_Mem(ip, community, timeout, retry)
 	case "Cisco_ASA", "Cisco_ASA_OLD":
 		return getCisco_ASA_Mem(ip, community, timeout, retry)
-	case "Huawei", "Huawei_V5.70", "Huawei_V5.130":
+	case "Huawei", "Huawei_V5":
 		oid = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.7"
 		return getH3CHWcpumem(ip, community, oid, timeout, retry)
 	case "Huawei_V3.10":
 		return getOldHuawei_Mem(ip, community, timeout, retry)
 	case "Huawei_ME60":
 		return getHuawei_Me60_Mem(ip, community, timeout, retry)
+	case "H3C_V3.1":
+		oid = "1.3.6.1.4.1.2011.10.2.6.1.1.1.1.8"
+		return getH3CHWcpumem(ip, community, oid, timeout, retry)
 	case "H3C", "H3C_V5", "H3C_V7":
 		oid = "1.3.6.1.4.1.25506.2.6.1.1.1.1.8"
 		return getH3CHWcpumem(ip, community, oid, timeout, retry)
@@ -70,8 +72,11 @@ func MemUtilization(ip, community string, timeout, retry int) (int, error) {
 		return getRuijiecpumem(ip, community, oid, timeout, retry)
 	case "Dell":
 		return GetDellMem(ip, community, timeout, retry)
+	case "FortiGate":
+		oid = "1.3.6.1.4.1.12356.101.4.1.4"
+		return getFortiGatecpumem(ip, community, oid, timeout, retry)
 	default:
-		err = errors.New(ip + "Switch Vendor is not defined")
+		err = errors.New(ip + " Switch Mem Vendor is not defined")
 		return 0, err
 	}
 

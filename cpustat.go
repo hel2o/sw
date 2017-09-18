@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gaochao1/gosnmp"
+	"github.com/hel2o/gosnmp"
 )
 
 func CpuUtilization(ip, community string, timeout, retry int) (int, error) {
@@ -18,7 +18,6 @@ func CpuUtilization(ip, community string, timeout, retry int) (int, error) {
 	vendor, err := SysVendor(ip, community, timeout)
 	method := "get"
 	var oid string
-
 	switch vendor {
 	case "Cisco_NX":
 		oid = "1.3.6.1.4.1.9.9.305.1.1.1.0"
@@ -33,7 +32,7 @@ func CpuUtilization(ip, community string, timeout, retry int) (int, error) {
 	case "Cisco_ASA_OLD":
 		oid = "1.3.6.1.4.1.9.9.109.1.1.1.1.4"
 		return getCiscoASAcpu(ip, community, oid, timeout, retry)
-	case "Huawei", "Huawei_V5.70", "Huawei_V5.130":
+	case "Huawei", "Huawei_V5":
 		oid = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.5"
 		return getH3CHWcpumem(ip, community, oid, timeout, retry)
 	case "Huawei_V3.10":
@@ -42,8 +41,14 @@ func CpuUtilization(ip, community string, timeout, retry int) (int, error) {
 	case "Huawei_ME60":
 		oid = "1.3.6.1.4.1.2011.6.3.4.1.2"
 		return getHuawei_ME60cpu(ip, community, oid, timeout, retry)
+	case "H3C_V3.1":
+		oid = "1.3.6.1.4.1.2011.6.1.1.1.3"
+		return getH3CHWcpumem(ip, community, oid, timeout, retry)
 	case "H3C", "H3C_V5", "H3C_V7":
 		oid = "1.3.6.1.4.1.25506.2.6.1.1.1.1.6"
+		return getH3CHWcpumem(ip, community, oid, timeout, retry)
+	case "H3C_ER":
+		oid = "1.3.6.1.2.1.25.3.3.1.2"
 		return getH3CHWcpumem(ip, community, oid, timeout, retry)
 	case "H3C_S9500":
 		oid = "1.3.6.1.4.1.2011.10.2.6.1.1.1.1.6"
@@ -57,8 +62,11 @@ func CpuUtilization(ip, community string, timeout, retry int) (int, error) {
 	case "Dell":
 		oid = "1.3.6.1.4.1.674.10895.5000.2.6132.1.1.1.1.4.11"
 		return getDellCpu(ip, community, oid, timeout, retry)
+	case "FortiGate":
+		oid = "1.3.6.1.4.1.12356.101.4.1.3"
+		return getFortiGatecpumem(ip, community, oid, timeout, retry)
 	default:
-		err = errors.New(ip + "Switch Vendor is not defined")
+		err = errors.New(ip + " Switch Cpu Vendor is not defined")
 		return 0, err
 	}
 
@@ -119,8 +127,28 @@ func getH3CHWcpumem(ip, community, oid string, timeout, retry int) (value int, e
 		}
 
 	}
-
 	return value, err
+}
+
+func getFortiGatecpumem(ip, community, oid string, timeout, retry int) (value int, err error) {
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println(ip+" Recovered in CPUtilization", r)
+		}
+	}()
+	method := "getnext"
+
+	var snmpPDUs []gosnmp.SnmpPDU
+
+	for i := 0; i < retry; i++ {
+		snmpPDUs, err = RunSnmp(ip, community, oid, method, timeout)
+		if len(snmpPDUs) > 0 {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return snmpPDUs[0].Value.(int), err
 }
 
 func getRuijiecpumem(ip, community, oid string, timeout, retry int) (value int, err error) {

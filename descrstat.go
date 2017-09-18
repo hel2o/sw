@@ -28,7 +28,6 @@ func SysDescr(ip, community string, timeout int) (string, error) {
 func SysVendor(ip, community string, timeout int) (string, error) {
 	sysDescr, err := SysDescr(ip, community, timeout)
 	sysDescrLower := strings.ToLower(sysDescr)
-
 	if strings.Contains(sysDescrLower, "cisco nx-os") {
 		return "Cisco_NX", err
 	}
@@ -67,6 +66,18 @@ func SysVendor(ip, community string, timeout int) (string, error) {
 			return "H3C_S9500", err
 		}
 
+		if strings.Contains(sysDescr, "Version 3.1") {
+			return "H3C_V3.1", err
+		}
+
+		if strings.Contains(sysDescr, "Version ER") {
+			return "H3C_ER", err
+		}
+
+		if strings.Contains(sysDescr, "S5024P") {
+			return "H3C_S5024P", err
+		}
+
 		return "H3C", err
 	}
 
@@ -74,11 +85,8 @@ func SysVendor(ip, community string, timeout int) (string, error) {
 		if strings.Contains(sysDescr, "MultiserviceEngine 60") {
 			return "Huawei_ME60", err
 		}
-		if strings.Contains(sysDescr, "Version 5.70") {
-			return "Huawei_V5.70", err
-		}
-		if strings.Contains(sysDescr, "Version 5.130") {
-			return "Huawei_V5.130", err
+		if strings.Contains(sysDescr, "Version 5.") {
+			return "Huawei_V5", err
 		}
 		if strings.Contains(sysDescr, "Version 3.10") {
 			return "Huawei_V3.10", err
@@ -97,11 +105,15 @@ func SysVendor(ip, community string, timeout int) (string, error) {
 	if strings.Contains(sysDescrLower, "dell networking") {
 		return "Dell", err
 	}
-
+	if strings.Contains(sysDescrLower, "draytek") {
+		return "Draytek", err
+	}
+	if strings.Contains(sysDescrLower, "fortigate") {
+		return "FortiGate", err
+	}
 	if strings.Contains(sysDescrLower, "linux") {
 		return "Linux", err
 	}
-
 	return "", err
 }
 

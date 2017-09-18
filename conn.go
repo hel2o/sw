@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/gaochao1/gosnmp"
+	"github.com/hel2o/gosnmp"
 )
 
 func ConnectionStat(ip, community string, timeout, retry int) (int, error) {
