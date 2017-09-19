@@ -78,6 +78,10 @@ func SysVendor(ip, community string, timeout int) (string, error) {
 			return "H3C_S5024P", err
 		}
 
+		if strings.Contains(sysDescr, "S2126T") {
+			return "H3C_S2126T", err
+		}
+
 		return "H3C", err
 	}
 
