@@ -15,9 +15,13 @@ func CpuUtilization(ip, community string, timeout, retry int) (int, error) {
 			log.Println(ip+" Recovered in CPUtilization", r)
 		}
 	}()
-	vendor, err := SysVendor(ip, community, timeout)
+	vendor, err := SysVendor(ip, community, retry, timeout)
+	if err != nil {
+		return 0, err
+	}
 	method := "get"
 	var oid string
+
 	switch vendor {
 	case "Cisco_NX":
 		oid = "1.3.6.1.4.1.9.9.305.1.1.1.0"
@@ -35,15 +39,12 @@ func CpuUtilization(ip, community string, timeout, retry int) (int, error) {
 	case "Huawei", "Huawei_V5":
 		oid = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.5"
 		return getH3CHWcpumem(ip, community, oid, timeout, retry)
-	case "Huawei_V3.10":
+	case "Huawei_V3.10", "H3C_V3.1":
 		oid = "1.3.6.1.4.1.2011.6.1.1.1.3"
 		return getH3CHWcpumem(ip, community, oid, timeout, retry)
 	case "Huawei_ME60":
 		oid = "1.3.6.1.4.1.2011.6.3.4.1.2"
 		return getHuawei_ME60cpu(ip, community, oid, timeout, retry)
-	case "H3C_V3.1":
-		oid = "1.3.6.1.4.1.2011.6.1.1.1.3"
-		return getH3CHWcpumem(ip, community, oid, timeout, retry)
 	case "H3C", "H3C_V5", "H3C_V7":
 		oid = "1.3.6.1.4.1.25506.2.6.1.1.1.1.6"
 		return getH3CHWcpumem(ip, community, oid, timeout, retry)
@@ -127,6 +128,7 @@ func getH3CHWcpumem(ip, community, oid string, timeout, retry int) (value int, e
 		}
 
 	}
+
 	return value, err
 }
 
@@ -148,6 +150,7 @@ func getFortiGatecpumem(ip, community, oid string, timeout, retry int) (value in
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
+
 	return snmpPDUs[0].Value.(int), err
 }
 

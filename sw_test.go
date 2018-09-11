@@ -1,20 +1,21 @@
 package sw
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/hel2o/gosnmp"
+	//"reflect"
 	"strconv"
 	"testing"
 	"time"
-
-	"github.com/gaochao1/gosnmp"
 )
 
 const (
-	ip           = "1.1.1.1"
-	community    = "123456"
-	oid          = "1.3.6.1.4.1.9.9.221.1.1.1.1.20"
+	ip           = "10.255.255.253"
+	community    = "cf-read"
+	oid          = ".1.3.6.1.2.1.4.22.1.2"
 	timeout      = 1000
-	method       = "get"
+	method       = "getnext"
 	retry        = 3
 	iprange      = "10.10.50.1-10.10.50.25"
 	pingIp       = "10.10.10.1"
@@ -23,6 +24,9 @@ const (
 	limitConn    = 1
 )
 
+func Test_T(t *testing.T) {
+	fmt.Println(123)
+}
 func Test_CpuUtilization(t *testing.T) {
 	if np, err := CpuUtilization(ip, community, timeout, retry); err != nil {
 		t.Error(err)
@@ -52,8 +56,9 @@ func Test_RunSnmp(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	} else {
-		fmt.Println("Test_RunSnmp :", &np)
-
+		for _, pdu := range np {
+			fmt.Printf(pdu.Value.(string))
+		}
 	}
 }
 
@@ -65,13 +70,17 @@ func Test_RunSnmpswalk(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	} else {
-		fmt.Println("Test_RunSnmp :", &np)
-
+		for _, r := range np {
+			t.Logf("%v: -> %s", r.Name, r.Value)
+		}
 	}
 }
-
+func escape(s interface{}) string {
+	r, _ := json.Marshal(s)
+	return string(r)
+}
 func Test_SysDescr(t *testing.T) {
-	np, err := SysDescr(ip, community, timeout)
+	np, err := SysDescr(ip, community, retry, timeout)
 	t.Error(err)
 	version_number, err := strconv.ParseFloat(getVersionNumber(np), 32)
 	t.Error(err)
@@ -80,7 +89,7 @@ func Test_SysDescr(t *testing.T) {
 }
 
 func Test_SysVendor(t *testing.T) {
-	if np, err := SysVendor(ip, community, timeout); err != nil {
+	if np, err := SysVendor(ip, community, retry, timeout); err != nil {
 		t.Error(err)
 	} else {
 		fmt.Println("Test_SysVendor :", np)
@@ -120,7 +129,7 @@ func Test_ListIfStatsSnmpWalk(t *testing.T) {
 	}
 }
 func Test_SysModel(t *testing.T) {
-	if np, err := SysModel(ip, community, timeout); err != nil {
+	if np, err := SysModel(ip, community, retry, timeout); err != nil {
 		t.Error(err)
 	} else {
 		fmt.Println("Test_SysModel :", np)
@@ -143,14 +152,6 @@ func Test_SysUpTime(t *testing.T) {
 	}
 }
 
-func Test_ConnectionStat(t *testing.T) {
-	if np, err := ConnectionStat(ip, community, timeout, retry); err != nil {
-		t.Error(err)
-	} else {
-		t.Log("ConnectionStat :", np)
-	}
-}
-
 func Test_ParseIp(t *testing.T) {
 	np := ParseIp(iprange)
 	t.Log("aliveip:", np)
@@ -158,12 +159,13 @@ func Test_ParseIp(t *testing.T) {
 }
 
 func Test_PingRtt(t *testing.T) {
-	rtt, err := PingRtt(pingIp, pingtimeout, fastPingMode)
+	rtt, err := PingRtt(pingIp, pingtimeout, retry, fastPingMode)
 	t.Log("rtt:", rtt)
 	t.Log("err:", err)
+
 }
 
 func Test_Ping(t *testing.T) {
-	r := Ping(pingIp, pingtimeout, fastPingMode)
+	r := Ping(pingIp, pingtimeout, retry, fastPingMode)
 	t.Log(r)
 }

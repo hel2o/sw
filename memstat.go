@@ -10,14 +10,17 @@ import (
 )
 
 func MemUtilization(ip, community string, timeout, retry int) (int, error) {
-	vendor, err := SysVendor(ip, community, timeout)
-	method := "get"
-	var oid string
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println(ip+" Recovered in MemUtilization", r)
 		}
 	}()
+	vendor, err := SysVendor(ip, community, retry, timeout)
+	if err != nil {
+		return 0, err
+	}
+	method := "get"
+	var oid string
 
 	switch vendor {
 	case "Cisco_NX":
@@ -214,6 +217,20 @@ func GetDellMem(ip, community string, timeout, retry int) (int, error) {
 	memTotalOid := "1.3.6.1.4.1.674.10895.5000.2.6132.1.1.1.1.4.2"
 	memTotal, err := RunSnmp(ip, community, memTotalOid, method, timeout)
 	memFreeOid := "1.3.6.1.4.1.674.10895.5000.2.6132.1.1.1.1.4.1"
+	memFree, err := RunSnmp(ip, community, memFreeOid, method, timeout)
+	if &memTotal[0] != nil && &memFree[0] != nil {
+		memfree := memFree[0].Value.(int)
+		memtotal := memTotal[0].Value.(int)
+		memUtili := float64(memtotal-memfree) / float64(memtotal)
+		return int(memUtili * 100), nil
+	}
+	return 0, err
+}
+func GetLinuxMem(ip, community string, timeout, retry int) (int, error) {
+	method := "get"
+	memTotalOid := "1.3.6.1.4.1.2021.4.5.0"
+	memTotal, err := RunSnmp(ip, community, memTotalOid, method, timeout)
+	memFreeOid := "1.3.6.1.4.1.2021.4.11.0"
 	memFree, err := RunSnmp(ip, community, memFreeOid, method, timeout)
 	if &memTotal[0] != nil && &memFree[0] != nil {
 		memfree := memFree[0].Value.(int)

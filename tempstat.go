@@ -15,7 +15,7 @@ func Temperature(ip, community string, timeout, retry int) (int, error) {
 			log.Println(ip+" Recovered in CPUtilization", r)
 		}
 	}()
-	vendor, err := SysVendor(ip, community, timeout)
+	vendor, err := SysVendor(ip, community, retry, timeout)
 	method := "get"
 	var oid string
 	switch vendor {
