@@ -9,7 +9,6 @@ import (
 
 func RunSnmp(ip, community, oid, method string, timeout int) (snmpPDUs []gosnmp.SnmpPDU, err error) {
 	cur_gosnmp, err := gosnmp.NewGoSNMP(ip, community, gosnmp.Version2c, int64(timeout))
-
 	if err != nil {
 		return nil, err
 	} else {

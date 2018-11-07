@@ -3,6 +3,7 @@ package sw
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/hel2o/gosnmp"
 	//"reflect"
 	"strconv"
@@ -11,9 +12,9 @@ import (
 )
 
 const (
-	ip           = "10.255.255.253"
+	ip           = "10.255.255.251"
 	community    = "cf-read"
-	oid          = ".1.3.6.1.2.1.4.22.1.2"
+	oid          = ".1.0.8802.1.1.2.1.4.1.1.9"
 	timeout      = 1000
 	method       = "getnext"
 	retry        = 3

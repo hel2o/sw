@@ -15,7 +15,18 @@ func Temperature(ip, community string, timeout, retry int) (int, error) {
 			log.Println(ip+" Recovered in CPUtilization", r)
 		}
 	}()
-	vendor, err := SysVendor(ip, community, retry, timeout)
+	var vendor string
+	var err error
+	if v, ok := VendorMap.Load(ip); !ok {
+		vendor, err = SysVendor(ip, community, retry, timeout)
+		if err != nil {
+			return 0, err
+		}
+		VendorMap.Store(ip, vendor)
+	} else {
+		vendor = v.(string)
+	}
+
 	method := "get"
 	var oid string
 	switch vendor {
@@ -62,6 +73,12 @@ func getH3CHWtemp(ip, community, oid string, timeout, retry int) (value int, err
 				break
 			}
 			time.Sleep(100 * time.Millisecond)
+		}
+		if len(snmpPDUs) < 1 {
+			if err == nil {
+				err = errors.New("snmpPDUs is nil")
+			}
+			break
 		}
 		oidnext = snmpPDUs[0].Name
 		if strings.Contains(oidnext, oid) {

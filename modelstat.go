@@ -10,7 +10,18 @@ import (
 )
 
 func SysModel(ip, community string, retry int, timeout int) (string, error) {
-	vendor, err := SysVendor(ip, community, retry, timeout)
+	var vendor string
+	var err error
+	if v, ok := VendorMap.Load(ip); !ok {
+		vendor, err = SysVendor(ip, community, retry, timeout)
+		if err != nil {
+			return "", err
+		}
+		VendorMap.Store(ip, vendor)
+	} else {
+		vendor = v.(string)
+	}
+
 	method := "get"
 	var oid string
 
