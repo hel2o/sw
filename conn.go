@@ -1,10 +1,8 @@
 package sw
 
 import (
+	"github.com/gosnmp/gosnmp"
 	"log"
-	"time"
-
-	"github.com/hel2o/gosnmp"
 )
 
 func ConnectionStat(ip, community string, timeout, retry int) (int, error) {
@@ -25,7 +23,7 @@ func ConnectionStat(ip, community string, timeout, retry int) (int, error) {
 		vendor = v.(string)
 	}
 
-	method := "get"
+	method := snmpGet
 	var oid string
 	switch vendor {
 	case "Cisco_ASA", "Cisco_ASA_OLD":
@@ -35,14 +33,7 @@ func ConnectionStat(ip, community string, timeout, retry int) (int, error) {
 	}
 
 	var snmpPDUs []gosnmp.SnmpPDU
-	for i := 0; i < retry; i++ {
-		snmpPDUs, err = RunSnmp(ip, community, oid, method, timeout)
-		if len(snmpPDUs) > 0 {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
+	snmpPDUs, err = RunSnmp(ip, community, oid, method, retry, timeout)
 	if err == nil {
 		for _, pdu := range snmpPDUs {
 			return pdu.Value.(int), err

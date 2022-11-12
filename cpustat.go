@@ -2,19 +2,16 @@ package sw
 
 import (
 	"errors"
+	"github.com/gosnmp/gosnmp"
 	"log"
-	"strings"
 	"sync"
-	"time"
-
-	"github.com/hel2o/gosnmp"
 )
 
 var (
 	VendorMap sync.Map
 )
 
-func CpuUtilization(ip, community string, timeout, retry int) (int, error) {
+func CpuUtilization(ip, community string, timeout, retry int) (uint64, error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println(ip+" Recovered in CPUtilization", r)
@@ -32,7 +29,7 @@ func CpuUtilization(ip, community string, timeout, retry int) (int, error) {
 		vendor = v.(string)
 	}
 
-	method := "get"
+	method := snmpGet
 	var oid string
 
 	switch vendor {
@@ -42,7 +39,7 @@ func CpuUtilization(ip, community string, timeout, retry int) (int, error) {
 		oid = "1.3.6.1.4.1.9.9.109.1.1.1.1.7.1"
 	case "Cisco_IOS_XE", "Cisco_IOS_XR":
 		oid = "1.3.6.1.4.1.9.9.109.1.1.1.1.7"
-		method = "getnext"
+		method = "bulkWalk"
 	case "Cisco_ASA":
 		oid = "1.3.6.1.4.1.9.9.109.1.1.1.1.7"
 		return getCiscoASAcpu(ip, community, oid, timeout, retry)
@@ -51,28 +48,28 @@ func CpuUtilization(ip, community string, timeout, retry int) (int, error) {
 		return getCiscoASAcpu(ip, community, oid, timeout, retry)
 	case "Huawei", "Huawei_V5":
 		oid = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.5"
-		return getH3CHWcpumem(ip, community, oid, timeout, retry)
+		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case "Huawei_V3.10", "H3C_V3.1":
 		oid = "1.3.6.1.4.1.2011.6.1.1.1.3"
-		return getH3CHWcpumem(ip, community, oid, timeout, retry)
+		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case "Huawei_ME60":
 		oid = "1.3.6.1.4.1.2011.6.3.4.1.2"
 		return getHuawei_ME60cpu(ip, community, oid, timeout, retry)
 	case "H3C", "H3C_V5", "H3C_V7":
 		oid = "1.3.6.1.4.1.25506.2.6.1.1.1.1.6"
-		return getH3CHWcpumem(ip, community, oid, timeout, retry)
+		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case "H3C_ER":
 		oid = "1.3.6.1.2.1.25.3.3.1.2"
-		return getH3CHWcpumem(ip, community, oid, timeout, retry)
+		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case "H3C_S9500":
 		oid = "1.3.6.1.4.1.2011.10.2.6.1.1.1.1.6"
-		return getH3CHWcpumem(ip, community, oid, timeout, retry)
+		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case "Juniper":
 		oid = "1.3.6.1.4.1.2636.3.1.13.1.8"
-		return getH3CHWcpumem(ip, community, oid, timeout, retry)
+		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case "Ruijie":
 		oid = "1.3.6.1.4.1.4881.1.1.10.2.36.1.1.2"
-		return getRuijiecpumem(ip, community, oid, timeout, retry)
+		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case "Dell":
 		oid = "1.3.6.1.4.1.674.10895.5000.2.6132.1.1.1.1.4.11"
 		return getDellCpu(ip, community, oid, timeout, retry)
@@ -85,147 +82,98 @@ func CpuUtilization(ip, community string, timeout, retry int) (int, error) {
 	}
 
 	var snmpPDUs []gosnmp.SnmpPDU
-	for i := 0; i < retry; i++ {
-		snmpPDUs, err = RunSnmp(ip, community, oid, method, timeout)
-		if len(snmpPDUs) > 0 {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
+
+	snmpPDUs, err = RunSnmp(ip, community, oid, method, retry, timeout)
 
 	if err == nil {
 		for _, pdu := range snmpPDUs {
-			return pdu.Value.(int), err
+			return pdu.Value.(uint64), err
 		}
 	}
 
 	return 0, err
 }
 
-func getCiscoASAcpu(ip, community, oid string, timeout, retry int) (value int, err error) {
+func getCiscoASAcpu(ip, community, oid string, timeout, retry int) (value uint64, err error) {
 	CPU_Value_SUM, CPU_Count, err := snmp_walk_sum(ip, community, oid, timeout, retry)
 	if err == nil {
 		if CPU_Count > 0 {
-			return int(CPU_Value_SUM / CPU_Count), err
+			return uint64(CPU_Value_SUM / CPU_Count), err
 		}
 	}
 	return 0, err
 }
 
-func getH3CHWcpumem(ip, community, oid string, timeout, retry int) (value int, err error) {
+func getCpuMemTemp(ip, community, oid string, timeout, retry int) (value uint64, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println(ip+" Recovered in CPUtilization", r)
+			log.Println(ip+" Recovered in CpuMemTemp", r)
 		}
 	}()
-	method := "getnext"
-	oidnext := oid
+	method := "bulkWalk"
 	var snmpPDUs []gosnmp.SnmpPDU
 
-	for {
-		for i := 0; i < retry; i++ {
-			snmpPDUs, err = RunSnmp(ip, community, oidnext, method, timeout)
-			if len(snmpPDUs) > 0 {
-				break
-			}
-			time.Sleep(100 * time.Millisecond)
+	snmpPDUs, err = RunSnmp(ip, community, oid, method, retry, timeout)
+	if len(snmpPDUs) < 1 {
+		if err == nil {
+			err = errors.New("snmpPDUs is nil")
 		}
-		if len(snmpPDUs) < 1 {
-			if err == nil {
-				err = errors.New("snmpPDUs is nil")
-			}
-			break
-		}
-		oidnext = snmpPDUs[0].Name
-		if strings.Contains(oidnext, oid) {
-			if snmpPDUs[0].Value.(int) != 0 {
-				value = snmpPDUs[0].Value.(int)
-				break
-			}
-		} else {
-			break
-		}
-
 	}
-
-	return value, err
+	var valid uint64
+	for _, pdu := range snmpPDUs {
+		v := gosnmp.ToBigInt(pdu.Value).Uint64()
+		if v > 0 {
+			valid++
+			value = value + v
+		}
+	}
+	if valid > 0 {
+		value = value / valid
+	}
+	return
 }
 
-func getFortiGatecpumem(ip, community, oid string, timeout, retry int) (value int, err error) {
+func getFortiGatecpumem(ip, community, oid string, timeout, retry int) (value uint64, err error) {
 
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println(ip+" Recovered in CPUtilization", r)
 		}
 	}()
-	method := "getnext"
+	method := "bulkWalk"
 
 	var snmpPDUs []gosnmp.SnmpPDU
 
-	for i := 0; i < retry; i++ {
-		snmpPDUs, err = RunSnmp(ip, community, oid, method, timeout)
-		if len(snmpPDUs) > 0 {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
+	snmpPDUs, err = RunSnmp(ip, community, oid, method, retry, timeout)
 
-	return snmpPDUs[0].Value.(int), err
+	return snmpPDUs[0].Value.(uint64), err
 }
 
-func getRuijiecpumem(ip, community, oid string, timeout, retry int) (value int, err error) {
-
-	defer func() {
-		if r := recover(); r != nil {
-			log.Println(ip+" Recovered in CPUtilization", r)
-		}
-	}()
-	method := "getnext"
-
-	var snmpPDUs []gosnmp.SnmpPDU
-
-	for i := 0; i < retry; i++ {
-		snmpPDUs, err = RunSnmp(ip, community, oid, method, timeout)
-		if len(snmpPDUs) > 0 {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	return snmpPDUs[0].Value.(int), err
-}
-
-func getHuawei_ME60cpu(ip, community, oid string, timeout, retry int) (value int, err error) {
+func getHuawei_ME60cpu(ip, community, oid string, timeout, retry int) (value uint64, err error) {
 	CPU_Value_SUM, CPU_Count, err := snmp_walk_sum(ip, community, oid, timeout, retry)
 	if err == nil {
 		if CPU_Count > 0 {
-			return int(CPU_Value_SUM / CPU_Count), err
+			return uint64(CPU_Value_SUM / CPU_Count), err
 		}
 	}
 
 	return 0, err
 }
 
-func getDellCpu(ip, community, oid string, timeout, retry int) (value int, err error) {
+func getDellCpu(ip, community, oid string, timeout, retry int) (value uint64, err error) {
 
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println(ip+" Recovered in CPUtilization", r)
 		}
 	}()
-	method := "getnext"
+	method := "bulkWalk"
 
 	var snmpPDUs []gosnmp.SnmpPDU
 
-	for i := 0; i < retry; i++ {
-		snmpPDUs, err = RunSnmp(ip, community, oid, method, timeout)
-		if len(snmpPDUs) > 0 {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
+	snmpPDUs, err = RunSnmp(ip, community, oid, method, retry, timeout)
 
-	return snmpPDUs[0].Value.(int), err
+	return snmpPDUs[0].Value.(uint64), err
 }
 
 func snmp_walk_sum(ip, community, oid string, timeout, retry int) (value_sum int, value_count int, err error) {
@@ -236,13 +184,9 @@ func snmp_walk_sum(ip, community, oid string, timeout, retry int) (value_sum int
 	}()
 	var snmpPDUs []gosnmp.SnmpPDU
 	method := "walk"
-	for i := 0; i < retry; i++ {
-		snmpPDUs, err = RunSnmp(ip, community, oid, method, timeout)
-		if len(snmpPDUs) > 0 {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
+
+	snmpPDUs, err = RunSnmp(ip, community, oid, method, retry, timeout)
+
 	var Values []int
 	if err == nil {
 		for _, pdu := range snmpPDUs {

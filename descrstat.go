@@ -1,39 +1,28 @@
 package sw
 
 import (
+	"github.com/gosnmp/gosnmp"
 	"log"
 	"strconv"
 	"strings"
-	"time"
-
-	"github.com/hel2o/gosnmp"
 )
 
-func SysDescr(ip, community string, retry int, timeout int) (string, error) {
+func SysDescr(ip, community string, retry int, timeout int) (desc string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println(ip+" Recovered in sysDescr", r)
 		}
 	}()
 	oid := "1.3.6.1.2.1.1.1.0"
-	method := "get"
+	method := snmpGet
 	var snmpPDUs []gosnmp.SnmpPDU
-	var err error
-	for i := 0; i < retry; i++ {
-		snmpPDUs, err = RunSnmp(ip, community, oid, method, timeout)
-		if len(snmpPDUs) > 0 {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	if err == nil {
-		for _, pdu := range snmpPDUs {
-			return pdu.Value.(string), err
+	snmpPDUs, err = RunSnmp(ip, community, oid, method, retry, timeout)
+	for _, pdu := range snmpPDUs {
+		if len(string(pdu.Value.([]byte))) > 0 {
+			desc = desc + "\n" + string(pdu.Value.([]byte))
 		}
 	}
-
-	return "", err
+	return
 }
 
 func SysVendor(ip, community string, retry int, timeout int) (string, error) {

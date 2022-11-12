@@ -2,14 +2,12 @@ package sw
 
 import (
 	"errors"
+	"github.com/gosnmp/gosnmp"
 	"log"
 	"strconv"
-	"time"
-
-	"github.com/hel2o/gosnmp"
 )
 
-func MemUtilization(ip, community string, timeout, retry int) (int, error) {
+func MemUtilization(ip, community string, timeout, retry int) (uint64, error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println(ip+" Recovered in MemUtilization", r)
@@ -27,7 +25,7 @@ func MemUtilization(ip, community string, timeout, retry int) (int, error) {
 		vendor = v.(string)
 	}
 
-	method := "get"
+	method := snmpGet
 	var oid string
 
 	switch vendor {
@@ -35,10 +33,10 @@ func MemUtilization(ip, community string, timeout, retry int) (int, error) {
 		oid = "1.3.6.1.4.1.9.9.305.1.1.2.0"
 	case "Cisco", "Cisco_IOS_XE", "Cisco_old":
 		memUsedOid := "1.3.6.1.4.1.9.9.48.1.1.1.5.1"
-		snmpMemUsed, _ := RunSnmp(ip, community, memUsedOid, method, timeout)
+		snmpMemUsed, _ := RunSnmp(ip, community, memUsedOid, method, retry, timeout)
 
 		memFreeOid := "1.3.6.1.4.1.9.9.48.1.1.1.6.1"
-		snmpMemFree, _ := RunSnmp(ip, community, memFreeOid, method, timeout)
+		snmpMemFree, _ := RunSnmp(ip, community, memFreeOid, method, retry, timeout)
 
 		if len(snmpMemFree) == 0 || len(snmpMemUsed) == 0 {
 			err := errors.New(ip + " No Such Object available on this agent at this OID")
@@ -52,7 +50,7 @@ func MemUtilization(ip, community string, timeout, retry int) (int, error) {
 			memFree := snmpMemFree[0].Value.(int)
 			if memUsed+memFree != 0 {
 				memUtili := float64(memUsed) / float64(memUsed+memFree)
-				return int(memUtili * 100), nil
+				return uint64(memUtili * 100), nil
 			}
 		}
 	case "Cisco_IOS_XR":
@@ -61,26 +59,26 @@ func MemUtilization(ip, community string, timeout, retry int) (int, error) {
 		return getCisco_ASA_Mem(ip, community, timeout, retry)
 	case "Huawei", "Huawei_V5":
 		oid = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.7"
-		return getH3CHWcpumem(ip, community, oid, timeout, retry)
+		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case "Huawei_V3.10":
 		return getOldHuawei_Mem(ip, community, timeout, retry)
 	case "Huawei_ME60":
 		return getHuawei_Me60_Mem(ip, community, timeout, retry)
 	case "H3C_V3.1":
 		oid = "1.3.6.1.4.1.2011.10.2.6.1.1.1.1.8"
-		return getH3CHWcpumem(ip, community, oid, timeout, retry)
+		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case "H3C", "H3C_V5", "H3C_V7":
 		oid = "1.3.6.1.4.1.25506.2.6.1.1.1.1.8"
-		return getH3CHWcpumem(ip, community, oid, timeout, retry)
+		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case "H3C_S9500":
 		oid = "1.3.6.1.4.1.2011.10.2.6.1.1.1.1.8"
-		return getH3CHWcpumem(ip, community, oid, timeout, retry)
+		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case "Juniper":
 		oid = "1.3.6.1.4.1.2636.3.1.13.1.11"
-		return getH3CHWcpumem(ip, community, oid, timeout, retry)
+		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case "Ruijie":
 		oid = "1.3.6.1.4.1.4881.1.1.10.2.35.1.1.1.3"
-		return getRuijiecpumem(ip, community, oid, timeout, retry)
+		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case "Dell":
 		return GetDellMem(ip, community, timeout, retry)
 	case "FortiGate":
@@ -92,46 +90,36 @@ func MemUtilization(ip, community string, timeout, retry int) (int, error) {
 	}
 
 	var snmpPDUs []gosnmp.SnmpPDU
-	for i := 0; i < retry; i++ {
-		snmpPDUs, err = RunSnmp(ip, community, oid, method, timeout)
-		if len(snmpPDUs) > 0 {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
+
+	snmpPDUs, err = RunSnmp(ip, community, oid, method, retry, timeout)
 
 	if err == nil {
 		for _, pdu := range snmpPDUs {
-			return pdu.Value.(int), err
+			return pdu.Value.(uint64), err
 		}
 	}
 
 	return 0, err
 }
-func getCisco_IOS_XR_Mem(ip, community string, timeout, retry int) (int, error) {
+
+func getCisco_IOS_XR_Mem(ip, community string, timeout, retry int) (uint64, error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println(ip+" Recovered in MemUtilization", r)
 		}
 	}()
 	cpuindex := "1.3.6.1.4.1.9.9.109.1.1.1.1.2"
-	method := "getnext"
+	method := "bulkWalk"
 	var snmpPDUs []gosnmp.SnmpPDU
 	var err error
 	var index string
-	for i := 0; i < retry; i++ {
-		snmpPDUs, err = RunSnmp(ip, community, cpuindex, method, timeout)
-		if len(snmpPDUs) > 0 {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
+	snmpPDUs, err = RunSnmp(ip, community, cpuindex, method, retry, timeout)
 	index = strconv.Itoa(snmpPDUs[0].Value.(int))
-	method = "get"
+	method = snmpGet
 	memUsedOid := "1.3.6.1.4.1.9.9.221.1.1.1.1.18." + index + ".1"
-	snmpMemUsed, _ := RunSnmp(ip, community, memUsedOid, method, timeout)
+	snmpMemUsed, _ := RunSnmp(ip, community, memUsedOid, method, retry, timeout)
 	memFreeOid := "1.3.6.1.4.1.9.9.221.1.1.1.1.20." + index + ".1"
-	snmpMemFree, _ := RunSnmp(ip, community, memFreeOid, method, timeout)
+	snmpMemFree, _ := RunSnmp(ip, community, memFreeOid, method, retry, timeout)
 	if len(snmpMemFree) == 0 || len(snmpMemUsed) == 0 {
 		err := errors.New(ip + " No Such Object available on this agent at this OID")
 		return 0, err
@@ -144,13 +132,13 @@ func getCisco_IOS_XR_Mem(ip, community string, timeout, retry int) (int, error) 
 		memFree := snmpMemFree[0].Value.(uint64)
 		if memUsed+memFree != 0 {
 			memUtili := float64(memUsed) / float64(memUsed+memFree)
-			return int(memUtili * 100), nil
+			return uint64(memUtili * 100), nil
 		}
 	}
 	return 0, err
 }
 
-func getOldHuawei_Mem(ip, community string, timeout, retry int) (int, error) {
+func getOldHuawei_Mem(ip, community string, timeout, retry int) (uint64, error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println(ip+" Recovered in MemUtilization", r)
@@ -158,36 +146,34 @@ func getOldHuawei_Mem(ip, community string, timeout, retry int) (int, error) {
 	}()
 	method := "walk"
 	memTotalOid := "1.3.6.1.4.1.2011.6.1.2.1.1.2"
-	snmpMemTotal, err := RunSnmp(ip, community, memTotalOid, method, timeout)
-
+	snmpMemTotal, err := RunSnmp(ip, community, memTotalOid, method, retry, timeout)
 	memFreeOid := "1.3.6.1.4.1.2011.6.1.2.1.1.3"
-	snmpMemFree, err := RunSnmp(ip, community, memFreeOid, method, timeout)
+	snmpMemFree, err := RunSnmp(ip, community, memFreeOid, method, retry, timeout)
 	if len(snmpMemFree) == 0 || len(snmpMemTotal) == 0 {
 		err := errors.New(ip + " No Such Object available on this agent at this OID")
 		return 0, err
 	} else {
-		memTotal := snmpMemTotal[0].Value.(int)
-		memFree := snmpMemFree[0].Value.(int)
+		memTotal := snmpMemTotal[0].Value.(uint)
+		memFree := snmpMemFree[0].Value.(uint)
 		if memTotal != 0 {
 			memUtili := float64(memTotal-memFree) / float64(memTotal)
-			return int(memUtili * 100), err
+			return uint64(memUtili * 100), err
 		}
 	}
 	return 0, err
 }
 
-func getCisco_ASA_Mem(ip, community string, timeout, retry int) (int, error) {
+func getCisco_ASA_Mem(ip, community string, timeout, retry int) (uint64, error) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println(ip+" Recovered in MemUtilization", r)
 		}
 	}()
-	method := "getnext"
+	method := "bulkWalk"
 	memUsedOid := "1.3.6.1.4.1.9.9.221.1.1.1.1.18"
-	snmpMemUsed, err := RunSnmp(ip, community, memUsedOid, method, timeout)
-	time.Sleep(100 * time.Millisecond)
+	snmpMemUsed, err := RunSnmp(ip, community, memUsedOid, method, retry, timeout)
 	memFreeOid := "1.3.6.1.4.1.9.9.221.1.1.1.1.20"
-	snmpMemFree, err := RunSnmp(ip, community, memFreeOid, method, timeout)
+	snmpMemFree, err := RunSnmp(ip, community, memFreeOid, method, retry, timeout)
 	if len(snmpMemFree) == 0 || len(snmpMemUsed) == 0 {
 		err := errors.New(ip + " No Such Object available on this agent at this OID")
 		return 0, err
@@ -200,13 +186,13 @@ func getCisco_ASA_Mem(ip, community string, timeout, retry int) (int, error) {
 		memFree := snmpMemFree[0].Value.(uint64)
 		if memUsed+memFree != 0 {
 			memUtili := float64(memUsed) / float64(memUsed+memFree)
-			return int(memUtili * 100), nil
+			return uint64(memUtili * 100), nil
 		}
 	}
 	return 0, err
 }
 
-func getHuawei_Me60_Mem(ip, community string, timeout, retry int) (int, error) {
+func getHuawei_Me60_Mem(ip, community string, timeout, retry int) (uint64, error) {
 	memTotalOid := "1.3.6.1.4.1.2011.6.3.5.1.1.2"
 
 	memTotal, _, err := snmp_walk_sum(ip, community, memTotalOid, timeout, retry)
@@ -215,36 +201,36 @@ func getHuawei_Me60_Mem(ip, community string, timeout, retry int) (int, error) {
 	memFree, _, err := snmp_walk_sum(ip, community, memFreeOid, timeout, retry)
 	if memTotal != 0 && memFree != 0 {
 		memUtili := float64(memTotal-memFree) / float64(memTotal)
-		return int(memUtili * 100), nil
+		return uint64(memUtili * 100), nil
 	}
 	return 0, err
 }
 
-func GetDellMem(ip, community string, timeout, retry int) (int, error) {
-	method := "getnext"
+func GetDellMem(ip, community string, timeout, retry int) (uint64, error) {
+	method := "bulkWalk"
 	memTotalOid := "1.3.6.1.4.1.674.10895.5000.2.6132.1.1.1.1.4.2"
-	memTotal, err := RunSnmp(ip, community, memTotalOid, method, timeout)
+	memTotal, err := RunSnmp(ip, community, memTotalOid, method, retry, timeout)
 	memFreeOid := "1.3.6.1.4.1.674.10895.5000.2.6132.1.1.1.1.4.1"
-	memFree, err := RunSnmp(ip, community, memFreeOid, method, timeout)
+	memFree, err := RunSnmp(ip, community, memFreeOid, method, retry, timeout)
 	if &memTotal[0] != nil && &memFree[0] != nil {
 		memfree := memFree[0].Value.(int)
 		memtotal := memTotal[0].Value.(int)
 		memUtili := float64(memtotal-memfree) / float64(memtotal)
-		return int(memUtili * 100), nil
+		return uint64(memUtili * 100), nil
 	}
 	return 0, err
 }
-func GetLinuxMem(ip, community string, timeout, retry int) (int, error) {
-	method := "get"
+func GetLinuxMem(ip, community string, timeout, retry int) (uint64, error) {
+	method := snmpGet
 	memTotalOid := "1.3.6.1.4.1.2021.4.5.0"
-	memTotal, err := RunSnmp(ip, community, memTotalOid, method, timeout)
+	memTotal, err := RunSnmp(ip, community, memTotalOid, method, retry, timeout)
 	memFreeOid := "1.3.6.1.4.1.2021.4.11.0"
-	memFree, err := RunSnmp(ip, community, memFreeOid, method, timeout)
+	memFree, err := RunSnmp(ip, community, memFreeOid, method, retry, timeout)
 	if &memTotal[0] != nil && &memFree[0] != nil {
 		memfree := memFree[0].Value.(int)
 		memtotal := memTotal[0].Value.(int)
 		memUtili := float64(memtotal-memfree) / float64(memtotal)
-		return int(memUtili * 100), nil
+		return uint64(memUtili * 100), nil
 	}
 	return 0, err
 }

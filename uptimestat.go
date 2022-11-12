@@ -2,6 +2,7 @@ package sw
 
 import (
 	"fmt"
+	"github.com/gosnmp/gosnmp"
 	"log"
 	"math"
 	"strconv"
@@ -11,17 +12,17 @@ import (
 
 func SysUpTime(ip, community string, timeout int) (string, error) {
 	oid := "1.3.6.1.2.1.1.3.0"
-	method := "get"
+	method := snmpGet
 	defer func() {
 		if r := recover(); r != nil {
 			log.Println(ip+" Recovered in Uptime", r)
 		}
 	}()
-	snmpPDUs, err := RunSnmp(ip, community, oid, method, timeout)
+	snmpPDUs, err := RunSnmp(ip, community, oid, method, 1, timeout)
 
 	if err == nil {
 		for _, pdu := range snmpPDUs {
-			durationStr := parseTime(pdu.Value.(int))
+			durationStr := parseTime(int(gosnmp.ToBigInt(pdu.Value).Int64()))
 			return durationStr, err
 		}
 	}

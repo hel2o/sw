@@ -3,15 +3,11 @@ package sw
 import (
 	"log"
 
-	"strings"
-	"time"
-
-	"github.com/hel2o/gosnmp"
+	"github.com/gosnmp/gosnmp"
 )
 
-func SysModel(ip, community string, retry int, timeout int) (string, error) {
+func SysModel(ip, community string, retry int, timeout int) (model string, err error) {
 	var vendor string
-	var err error
 	if v, ok := VendorMap.Load(ip); !ok {
 		vendor, err = SysVendor(ip, community, retry, timeout)
 		if err != nil {
@@ -22,7 +18,7 @@ func SysModel(ip, community string, retry int, timeout int) (string, error) {
 		vendor = v.(string)
 	}
 
-	method := "get"
+	method := snmpGet
 	var oid string
 
 	defer func() {
@@ -33,10 +29,10 @@ func SysModel(ip, community string, retry int, timeout int) (string, error) {
 
 	switch vendor {
 	case "Cisco_NX", "Cisco", "Cisco_old", "Cisco_IOS_XR", "Cisco_IOS_XE", "Ruijie":
-		method = "getnext"
+		method = "bulkWalk"
 		oid = "1.3.6.1.2.1.47.1.1.1.1.13"
 	case "Huawei_ME60", "Huawei_V5", "Huawei_V3.10":
-		method = "getnext"
+		method = "bulkWalk"
 		oid = "1.3.6.1.2.1.47.1.1.1.1.2"
 	case "H3C_V3.1", "H3C_S9500", "H3C", "H3C_V5", "H3C_V7", "Cisco_ASA":
 		oid = "1.3.6.1.2.1.47.1.1.1.1.13"
@@ -47,47 +43,30 @@ func SysModel(ip, community string, retry int, timeout int) (string, error) {
 		return "", err
 	}
 
-	snmpPDUs, err := RunSnmp(ip, community, oid, method, timeout)
+	snmpPDUs, err := RunSnmp(ip, community, oid, method, retry, timeout)
 
-	if err == nil {
-		for _, pdu := range snmpPDUs {
-			return pdu.Value.(string), err
+	for _, pdu := range snmpPDUs {
+		if len(string(pdu.Value.([]byte))) > 0 {
+			model = model + "\n" + string(pdu.Value.([]byte))
 		}
 	}
-
-	return "", err
+	return
 
 }
 
 func getSwmodle(ip, community, oid string, timeout, retry int) (value string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println(ip+" Recovered in CPUtilization", r)
+			log.Println(ip+" Recovered in getSwmodle", r)
 		}
 	}()
-	method := "getnext"
-	oidnext := oid
+	method := "bulkWalk"
 	var snmpPDUs []gosnmp.SnmpPDU
-
-	for {
-		for i := 0; i < retry; i++ {
-			snmpPDUs, err = RunSnmp(ip, community, oidnext, method, timeout)
-			if len(snmpPDUs) > 0 {
-				break
-			}
-			time.Sleep(100 * time.Millisecond)
+	snmpPDUs, err = RunSnmp(ip, community, oid, method, retry, timeout)
+	for _, pdu := range snmpPDUs {
+		if len(string(pdu.Value.([]byte))) > 0 {
+			value = pdu.Value.(string)
 		}
-		oidnext = snmpPDUs[0].Name
-		if strings.Contains(oidnext, oid) {
-			if snmpPDUs[0].Value.(string) != "" {
-				value = snmpPDUs[0].Value.(string)
-				break
-			}
-		} else {
-			break
-		}
-
 	}
-
 	return value, err
 }

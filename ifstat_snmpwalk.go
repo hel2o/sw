@@ -156,21 +156,21 @@ func ListIfStatsSnmpWalk(ip, community string, timeout int, ignoreIface []string
 					ifStats.IfHCOutMulticastPkts, _ = strconv.ParseUint(ifOutMulticastPktMap[ifIndex], 10, 64)
 				}
 				if ignoreDiscards == false {
-					ifStats.IfInDiscards, _ = strconv.Atoi(ifInDiscardsMap[ifIndex])
-					ifStats.IfOutDiscards, _ = strconv.Atoi(ifOutDiscardsMap[ifIndex])
+					ifStats.IfInDiscards, _ = strconv.ParseUint(ifInDiscardsMap[ifIndex], 10, 60)
+					ifStats.IfOutDiscards, _ = strconv.ParseUint(ifOutDiscardsMap[ifIndex], 10, 64)
 				}
 				if ignoreErrors == false {
-					ifStats.IfInErrors, _ = strconv.Atoi(ifInErrorsMap[ifIndex])
-					ifStats.IfOutErrors, _ = strconv.Atoi(ifOutErrorsMap[ifIndex])
+					ifStats.IfInErrors, _ = strconv.ParseUint(ifInErrorsMap[ifIndex], 10, 60)
+					ifStats.IfOutErrors, _ = strconv.ParseUint(ifOutErrorsMap[ifIndex], 10, 60)
 				}
 				if ignoreUnknownProtos == false {
-					ifStats.IfInUnknownProtos, _ = strconv.Atoi(ifInUnknownProtosMap[ifIndex])
+					ifStats.IfInUnknownProtos, _ = strconv.ParseUint(ifInUnknownProtosMap[ifIndex], 10, 60)
 				}
 				if ignoreOutQLen == false {
-					ifStats.IfOutQLen, _ = strconv.Atoi(ifOutQLenMap[ifIndex])
+					ifStats.IfOutQLen, _ = strconv.ParseUint(ifOutQLenMap[ifIndex], 10, 60)
 				}
 
-				ifStats.IfSpeed, _ = strconv.Atoi(ifSpeedMap[ifIndex])
+				ifStats.IfSpeed, _ = strconv.ParseUint(ifSpeedMap[ifIndex], 10, 64)
 				ifStats.IfSpeed = 1000 * 1000 * ifStats.IfSpeed
 
 				if ignoreOperStatus == false {

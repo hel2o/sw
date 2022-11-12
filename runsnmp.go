@@ -1,87 +1,99 @@
 package sw
 
 import (
+	"log"
 	"strings"
 	"time"
 
-	"github.com/hel2o/gosnmp"
+	"github.com/gosnmp/gosnmp"
 )
 
-func RunSnmp(ip, community, oid, method string, timeout int) (snmpPDUs []gosnmp.SnmpPDU, err error) {
-	cur_gosnmp, err := gosnmp.NewGoSNMP(ip, community, gosnmp.Version2c, int64(timeout))
-	if err != nil {
-		return nil, err
-	} else {
-		cur_gosnmp.SetTimeout(int64(timeout))
-		snmpPDUs, err := ParseSnmpMethod(oid, method, cur_gosnmp)
-		if err != nil {
-			return nil, err
-		} else {
-			return snmpPDUs, err
-		}
-	}
+const snmpGet = "get"
+const snmpGetNex = "getNext"
+const snmpBulkWalk = "bulkWalk"
 
+func RunSnmp(ip, community, oid, method string, retry, timeout int) (snmpPDUs []gosnmp.SnmpPDU, err error) {
+	if method == snmpGetNex {
+		timeout = 5000
+	}
+	params := &gosnmp.GoSNMP{
+		Target:    ip,
+		Port:      161,
+		Version:   gosnmp.Version2c,
+		Community: community,
+		Timeout:   time.Duration(timeout) * time.Millisecond,
+	}
+	params.Retries = retry
+	err = params.Connect()
+	if err != nil {
+		return
+	}
+	defer params.Conn.Close()
+	snmpPDUs, err = ParseSnmpMethod(oid, method, params)
 	return
 }
 
 func ParseSnmpMethod(oid, method string, cur_gosnmp *gosnmp.GoSNMP) (snmpPDUs []gosnmp.SnmpPDU, err error) {
 	var snmpPacket *gosnmp.SnmpPacket
-
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println(cur_gosnmp.Target+" Recovered in ParseSnmpMethod", r)
+		}
+	}()
 	switch method {
-	case "get":
-		snmpPacket, err = cur_gosnmp.Get(oid)
+	case snmpGet:
+		snmpPacket, err = cur_gosnmp.Get([]string{oid})
 		if err != nil {
 			return nil, err
 		} else {
 			snmpPDUs = snmpPacket.Variables
 			return snmpPDUs, err
 		}
-	case "getnext":
-		snmpPacket, err = cur_gosnmp.GetNext(oid)
+	case snmpGetNex:
+		var oidNext = oid
+		var pack *gosnmp.SnmpPacket
+		for {
+			pack, err = cur_gosnmp.GetNext([]string{oidNext})
+			if err != nil || len(pack.Variables) <= 0 {
+				break
+			}
+			oidNext = pack.Variables[0].Name
+			if strings.Contains(oidNext, oid) {
+				snmpPDUs = append(snmpPDUs, pack.Variables[0])
+			} else {
+				break
+			}
+		}
+
+	case snmpBulkWalk:
+		err = cur_gosnmp.BulkWalk(oid, func(pdu gosnmp.SnmpPDU) error {
+			snmpPDUs = append(snmpPDUs, pdu)
+			return nil
+		})
 		if err != nil {
 			return nil, err
-		} else {
-			snmpPDUs = snmpPacket.Variables
-			return snmpPDUs, err
 		}
 	default:
-		snmpPDUs, err = cur_gosnmp.Walk(oid)
-		return snmpPDUs, err
+		err = cur_gosnmp.Walk(oid, func(pdu gosnmp.SnmpPDU) error {
+			snmpPDUs = append(snmpPDUs, pdu)
+			return nil
+		})
 	}
 
 	return
 }
 
-func snmpPDUNameToIfIndex(snmpPDUName string) string {
-	oidSplit := strings.Split(snmpPDUName, ".")
-	curIfIndex := oidSplit[len(oidSplit)-1]
-	return curIfIndex
+func RunSnmpBulkWalk(ip, community, oid string, retry int, timeout int) ([]gosnmp.SnmpPDU, error) {
+	snmpPDUs, err := RunSnmp(ip, community, oid, snmpBulkWalk, retry, timeout)
+	return snmpPDUs, err
 }
 
-func RunSnmpwalk(ip, community, oid string, retry int, timeout int) ([]gosnmp.SnmpPDU, error) {
-	method := "getnext"
-	oidnext := oid
-	var snmpPDUs = []gosnmp.SnmpPDU{}
-	var snmpPDU []gosnmp.SnmpPDU
-	var err error
+func RunSnmpGetNext(ip, community, oid string, retry int, timeout int) ([]gosnmp.SnmpPDU, error) {
+	snmpPDUs, err := RunSnmp(ip, community, oid, snmpGetNex, retry, timeout)
+	return snmpPDUs, err
+}
 
-	for {
-		for i := 0; i < retry; i++ {
-			snmpPDU, err = RunSnmp(ip, community, oidnext, method, timeout)
-			if len(snmpPDU) > 0 {
-				break
-			}
-			time.Sleep(100 * time.Millisecond)
-		}
-		if err != nil {
-			break
-		}
-		oidnext = snmpPDU[0].Name
-		if strings.Contains(oidnext, oid) {
-			snmpPDUs = append(snmpPDUs, snmpPDU[0])
-		} else {
-			break
-		}
-	}
+func RunSnmpGet(ip, community, oid string, retry int, timeout int) ([]gosnmp.SnmpPDU, error) {
+	snmpPDUs, err := RunSnmp(ip, community, oid, snmpGet, retry, timeout)
 	return snmpPDUs, err
 }
