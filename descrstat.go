@@ -1,18 +1,13 @@
 package sw
 
 import (
+	"fmt"
 	"github.com/gosnmp/gosnmp"
-	"log"
 	"strconv"
 	"strings"
 )
 
-func SysDescr(ip, community string, retry int, timeout int) (desc string, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Println(ip+" Recovered in sysDescr", r)
-		}
-	}()
+func SysDescription(ip, community string, retry int, timeout int) (desc string, err error) {
 	oid := "1.3.6.1.2.1.1.1.0"
 	method := snmpGet
 	var snmpPDUs []gosnmp.SnmpPDU
@@ -26,7 +21,7 @@ func SysDescr(ip, community string, retry int, timeout int) (desc string, err er
 }
 
 func SysVendor(ip, community string, retry int, timeout int) (string, error) {
-	sysDescr, err := SysDescr(ip, community, retry, timeout)
+	sysDescr, err := SysDescription(ip, community, retry, timeout)
 	sysDescrLower := strings.ToLower(sysDescr)
 
 	if strings.Contains(sysDescrLower, "cisco nx-os") {
@@ -85,7 +80,9 @@ func SysVendor(ip, community string, retry int, timeout int) (string, error) {
 
 		return "H3C", err
 	}
-
+	if strings.Contains(sysDescrLower, "futurematrix") {
+		return "FutureMatrix", err
+	}
 	if strings.Contains(sysDescrLower, "huawei") {
 		if strings.Contains(sysDescr, "MultiserviceEngine 60") {
 			return "Huawei_ME60", err
@@ -134,4 +131,17 @@ func getVersionNumber(sysdescr string) string {
 	version_number = strings.Replace(version_number, "(", "", -1)
 	version_number = strings.Replace(version_number, ")", "", -1)
 	return version_number
+}
+
+func SysPatchInfo(ip, community string, retry int, timeout int) (patch string, err error) {
+	oid := "1.3.6.1.4.1.2011.5.25.19.1.8.5.1.1.4"
+	method := snmpBulkWalk
+	var snmpPDUs []gosnmp.SnmpPDU
+	snmpPDUs, err = RunSnmp(ip, community, oid, method, retry, timeout)
+	for i, pdu := range snmpPDUs {
+		if len(string(pdu.Value.([]byte))) > 0 {
+			patch = fmt.Sprintf("%s<br>slot%d patch: %s", patch, i, string(pdu.Value.([]byte)))
+		}
+	}
+	return
 }

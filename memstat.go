@@ -57,6 +57,9 @@ func MemUtilization(ip, community string, timeout, retry int) (uint64, error) {
 		return getCisco_IOS_XR_Mem(ip, community, timeout, retry)
 	case "Cisco_ASA", "Cisco_ASA_OLD":
 		return getCisco_ASA_Mem(ip, community, timeout, retry)
+	case "FutureMatrix":
+		oid = "1.3.6.1.4.1.56813.5.25.31.1.1.1.1.7"
+		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case "Huawei", "Huawei_V5":
 		oid = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.7"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
