@@ -114,6 +114,9 @@ func SysVendor(ip, community string, retry int, timeout int) (string, error) {
 		return "FortiGate", err
 	}
 	if strings.Contains(sysDescrLower, "linux") {
+		if strings.Contains(sysDescrLower, "armv7l") {
+			return "Sundray", err
+		}
 		return "Linux", err
 	}
 

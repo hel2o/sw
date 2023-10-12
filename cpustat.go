@@ -79,6 +79,9 @@ func CpuUtilization(ip, community string, timeout, retry int) (uint64, error) {
 	case "FortiGate":
 		oid = "1.3.6.1.4.1.12356.101.4.1.3"
 		return getFortiGatecpumem(ip, community, oid, timeout, retry)
+	case "Sundray":
+		oid = "UCD-SNMP-MIB::ssCpuUser.0"
+		return getFortiGatecpumem(ip, community, oid, timeout, retry)
 	default:
 		err = errors.New(ip + " Switch Cpu Vendor is not defined")
 		return 0, err
