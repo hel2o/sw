@@ -12,16 +12,16 @@ const snmpGet = "get"
 const snmpGetNex = "getNext"
 const snmpBulkWalk = "bulkWalk"
 
-func RunSnmp(ip, community, oid, method string, retry, timeout int) (snmpPDUs []gosnmp.SnmpPDU, err error) {
+func RunSnmp(ip, community, oid, method string, retry, timeoutMillisecond int) (snmpPDUs []gosnmp.SnmpPDU, err error) {
 	if method == snmpGetNex {
-		timeout = 5000
+		timeoutMillisecond = 5000
 	}
 	params := &gosnmp.GoSNMP{
 		Target:    ip,
 		Port:      161,
 		Version:   gosnmp.Version2c,
 		Community: community,
-		Timeout:   time.Duration(timeout) * time.Millisecond,
+		Timeout:   time.Duration(timeoutMillisecond) * time.Millisecond,
 	}
 	params.Retries = retry
 	err = params.Connect()

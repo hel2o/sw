@@ -7,14 +7,49 @@ import (
 	"strings"
 )
 
-func SysDescription(ip, community string, retry int, timeout int) (desc string, err error) {
-	oid := "1.3.6.1.2.1.1.1.0"
+func SystemName(ip, community string, retry int, timeout int) (name string, err error) {
+	oid := "1.3.6.1.2.1.1.5.0"
 	method := snmpGet
 	var snmpPDUs []gosnmp.SnmpPDU
 	snmpPDUs, err = RunSnmp(ip, community, oid, method, retry, timeout)
 	for _, pdu := range snmpPDUs {
 		if len(string(pdu.Value.([]byte))) > 0 {
+			name = string(pdu.Value.([]byte))
+			break
+		}
+	}
+	return
+
+}
+
+func SysDescription(ip, community string, retry int, timeout int) (desc string, err error) {
+	oid := "1.3.6.1.2.1.1.1.0"
+	method := snmpGet
+	var snmpPDUs []gosnmp.SnmpPDU
+	snmpPDUs, err = RunSnmp(ip, community, oid, method, retry, timeout)
+	if err != nil {
+		return
+	}
+	for _, pdu := range snmpPDUs {
+		if pdu.Value != nil && len(string(pdu.Value.([]byte))) > 0 {
 			desc = desc + "\n" + string(pdu.Value.([]byte))
+		}
+	}
+	return
+}
+
+func SerialNumber(ip, community string, retry int, timeout int) (sn string, err error) {
+	oid := "1.3.6.1.2.1.47.1.1.1.1.11"
+	method := snmpBulkWalk
+	var snmpPDUs []gosnmp.SnmpPDU
+	snmpPDUs, err = RunSnmp(ip, community, oid, method, retry, timeout)
+	if err != nil {
+		return
+	}
+	for _, pdu := range snmpPDUs {
+		if pdu.Value != nil && len(string(pdu.Value.([]byte))) > 0 {
+			sn = string(pdu.Value.([]byte))
+			break
 		}
 	}
 	return

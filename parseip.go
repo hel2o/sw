@@ -106,7 +106,7 @@ func IPMaskCIDRToString(one string) string {
 	return strings.Join(maskstring, ".")
 }
 
-// Calculates the first and last IP addresses in an IPNet
+// Calculates the first and last RequestIP addresses in an IPNet
 func networkRange(network *net.IPNet) (net.IP, net.IP) {
 	netIP := network.IP.To4()
 	firstIP := netIP.Mask(network.Mask)
@@ -126,12 +126,12 @@ func networkSize(mask net.IPMask) int32 {
 	return int32(binary.BigEndian.Uint32(m)) + 1
 }
 
-// Converts a 4 bytes IP into a 32 bit integer
+// Converts a 4 bytes RequestIP into a 32 bit integer
 func ipToInt(ip net.IP) int32 {
 	return int32(binary.BigEndian.Uint32(ip.To4()))
 }
 
-// Converts 32 bit integer into a 4 bytes IP address
+// Converts 32 bit integer into a 4 bytes RequestIP address
 func intToIP(n int32) net.IP {
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint32(b, uint32(n))

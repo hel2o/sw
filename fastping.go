@@ -17,7 +17,7 @@ func fastPingRtt(ip string, timeout int) (float64, error) {
 	p.AddIPAddr(ra)
 	p.OnRecv = func(addr *net.IPAddr, rtt time.Duration) {
 		rt = float64(rtt.Nanoseconds()) / 1000000.0
-		//fmt.Printf("IP Addr: %s receive, RTT: %v\n", addr.String(), rtt)
+		//fmt.Printf("RequestIP Addr: %s receive, RTT: %v\n", addr.String(), rtt)
 	}
 	p.OnIdle = func() {
 		//fmt.Println("finish")
