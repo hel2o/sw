@@ -260,21 +260,25 @@ func WalkIfSpeed(ip, community string, timeout int, ch chan map[string]string, r
 	WalkIf(ip, ifSpeedOid, community, timeout, retry, ch)
 }
 
-func WalkIf(ip, oid, community string, timeout, retry int, ch chan map[string]string) {
+func WalkIf(ip string, oids []string, community string, timeout, retry int, ch chan map[string]string) {
 	result := make(map[string]string)
 
 	for i := 0; i < retry; i++ {
-		out, err := CmdTimeout(timeout, "snmpwalk", "-v", "2c", "-c", community, ip, oid)
-
 		var list []string
-		if strings.Contains(out, "IF-MIB") {
-			list = strings.Split(out, "IF-MIB")
-		} else {
-			list = strings.Split(out, "iso")
+		var err error
+		var out string
+		for _, oid := range oids {
+			out, err = CmdTimeout(timeout, "snmpwalk", "-v", "2c", "-c", community, ip, oid)
+			if strings.Contains(out, "IF-MIB") {
+				list = strings.Split(out, "IF-MIB")
+			} else {
+				list = strings.Split(out, "iso")
+			}
+			if len(list) == 0 {
+				continue
+			}
 		}
-
 		for _, v := range list {
-
 			defer func() {
 				if r := recover(); r != nil {
 					log.Println("Recovered in WalkIf", r)
@@ -305,7 +309,7 @@ func WalkIf(ip, oid, community string, timeout, retry int, ch chan map[string]st
 			return
 		}
 		if err != nil && i == (retry-1) {
-			log.Println(ip, oid, err)
+			log.Println(ip, oids, err)
 		}
 		time.Sleep(100 * time.Millisecond)
 	}

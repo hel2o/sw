@@ -10,75 +10,76 @@ import (
 	"github.com/gosnmp/gosnmp"
 )
 
-const (
-	ifNameOid           = "1.3.6.1.2.1.31.1.1.1.1"
+var (
+	ifNameOid           = []string{"1.3.6.1.2.1.31.1.1.1.1"}
 	ifNameOidPrefix     = ".1.3.6.1.2.1.31.1.1.1.1."
-	ifHCInOid           = "1.3.6.1.2.1.31.1.1.1.6"
+	ifHCInOid           = []string{"1.3.6.1.2.1.31.1.1.1.6"}
 	ifHCInOidPrefix     = ".1.3.6.1.2.1.31.1.1.1.6."
-	ifHCOutOid          = "1.3.6.1.2.1.31.1.1.1.10"
-	ifHCInPktsOid       = "1.3.6.1.2.1.31.1.1.1.7"
+	ifHCOutOid          = []string{"1.3.6.1.2.1.31.1.1.1.10"}
+	ifHCInPktsOid       = []string{"1.3.6.1.2.1.31.1.1.1.7"}
 	ifHCInPktsOidPrefix = ".1.3.6.1.2.1.31.1.1.1.7."
-	ifHCOutPktsOid      = "1.3.6.1.2.1.31.1.1.1.11"
+	ifHCOutPktsOid      = []string{"1.3.6.1.2.1.31.1.1.1.11"}
 	//up(1),down(2)
-	ifOperStatusOid              = "1.3.6.1.2.1.2.2.1.8"
+	ifOperStatusOid              = []string{"1.3.6.1.2.1.2.2.1.8"}
 	ifOperStatusOidPrefix        = ".1.3.6.1.2.1.2.2.1.8."
-	ifHCInBroadcastPktsOid       = "1.3.6.1.2.1.31.1.1.1.9"
+	ifHCInBroadcastPktsOid       = []string{"1.3.6.1.2.1.31.1.1.1.9"}
 	ifHCInBroadcastPktsOidPrefix = ".1.3.6.1.2.1.31.1.1.1.9."
-	ifHCOutBroadcastPktsOid      = "1.3.6.1.2.1.31.1.1.1.13"
+	ifHCOutBroadcastPktsOid      = []string{"1.3.6.1.2.1.31.1.1.1.13"}
 	// multicastpkt
-	ifHCInMulticastPktsOid       = "1.3.6.1.2.1.31.1.1.1.8"
+	ifHCInMulticastPktsOid       = []string{"1.3.6.1.2.1.31.1.1.1.8"}
 	ifHCInMulticastPktsOidPrefix = ".1.3.6.1.2.1.31.1.1.1.8."
-	ifHCOutMulticastPktsOid      = "1.3.6.1.2.1.31.1.1.1.12"
+	ifHCOutMulticastPktsOid      = []string{"1.3.6.1.2.1.31.1.1.1.12"}
 	// speed 配置
-	ifSpeedOid       = "1.3.6.1.2.1.31.1.1.1.15"
+	ifSpeedOid       = []string{"1.3.6.1.2.1.31.1.1.1.15"}
 	ifSpeedOidPrefix = ".1.3.6.1.2.1.31.1.1.1.15."
 
 	// Discards配置
-	ifInDiscardsOid       = "1.3.6.1.2.1.2.2.1.13"
+	ifInDiscardsOid       = []string{"1.3.6.1.2.1.2.2.1.13"}
 	ifInDiscardsOidPrefix = ".1.3.6.1.2.1.2.2.1.13."
-	ifOutDiscardsOid      = "1.3.6.1.2.1.2.2.1.19"
+	ifOutDiscardsOid      = []string{"1.3.6.1.2.1.2.2.1.19"}
 
 	// Errors配置
-	ifInErrorsOid        = "1.3.6.1.2.1.2.2.1.14"
+	ifInErrorsOid        = []string{"1.3.6.1.2.1.2.2.1.14"}
 	ifInErrorsOidPrefix  = ".1.3.6.1.2.1.2.2.1.14."
-	ifOutErrorsOid       = "1.3.6.1.2.1.2.2.1.20"
+	ifOutErrorsOid       = []string{"1.3.6.1.2.1.2.2.1.20"}
 	ifOutErrorsOidPrefix = ".1.3.6.1.2.1.2.2.1.20."
 
 	//ifInUnknownProtos 由于未知或不支持的网络协议而丢弃的输入报文的数量
-	ifInUnknownProtosOid    = "1.3.6.1.2.1.2.2.1.15"
+	ifInUnknownProtosOid    = []string{"1.3.6.1.2.1.2.2.1.15"}
 	ifInUnknownProtosPrefix = ".1.3.6.1.2.1.2.2.1.15."
 
 	//ifOutQLen 接口上输出报文队列长度
-	ifOutQLenOid    = "1.3.6.1.2.1.2.2.1.21"
+	ifOutQLenOid    = []string{"1.3.6.1.2.1.2.2.1.21"}
 	ifOutQLenPrefix = ".1.3.6.1.2.1.2.2.1.21."
 
 	//二层端口类型
-	//trunk(1) invalid(0) access(2) hybrid(3) fabric(4) qinq(5) desirable(6) auto(7)
-	hwL2IfPortTypeOid       = "1.3.6.1.4.1.2011.5.25.42.1.1.1.3.1.3"
-	hwL2IfPortTypeOidPrefix = ".1.3.6.1.4.1.2011.5.25.42.1.1.1.3.1.3."
+	//华为 trunk(1) invalid(0) access(2) hybrid(3) fabric(4) qinq(5) desirable(6) auto(7)
+	//锐捷 access(1), trunk(2), dot1q-tunnel(3),hybrid(4), other(5), uplink(6),host(7) or promiscuous(8) port.
+	l2IfPortTypeOid       = []string{"1.3.6.1.4.1.2011.5.25.42.1.1.1.3.1.3", "1.3.6.1.4.1.56813.5.25.42.1.1.1.3.1.3", "1.3.6.1.4.1.4881.1.1.10.2.9.1.6.1.2"}
+	l2IfPortTypeOidPrefix = []string{".1.3.6.1.4.1.2011.5.25.42.1.1.1.3.1.3.", ".1.3.6.1.4.1.56813.5.25.42.1.1.1.3.1.3.", ".1.3.6.1.4.1.4881.1.1.10.2.9.1.6.1.2."}
 
 	//二层端口的VLAN ID
 	//取值范围为0～4094。如果设置为0，则hwL2IfPVID恢复为缺省值1
-	hwL2IfPVIDOid       = "1.3.6.1.4.1.2011.5.25.42.1.1.1.3.1.4"
-	hwL2IfPVIDOidPrefix = ".1.3.6.1.4.1.2011.5.25.42.1.1.1.3.1.4."
+	l2IfPVIDOid       = []string{"1.3.6.1.4.1.2011.5.25.42.1.1.1.3.1.4", "1.3.6.1.4.1.56813.5.25.42.1.1.1.3.1.4", "1.3.6.1.4.1.4881.1.1.10.2.9.1.6.1.3"}
+	l2IfPVIDOidPrefix = []string{".1.3.6.1.4.1.2011.5.25.42.1.1.1.3.1.4.", ".1.3.6.1.4.1.56813.5.25.42.1.1.1.3.1.4.", ".1.3.6.1.4.1.4881.1.1.10.2.9.1.6.1.3."}
 
 	//二层端口的模式
 	//INTEGER : copper(1)2: fiber(2)3: other(3)
-	hwEthernetPortModeOid    = "1.3.6.1.4.1.2011.5.25.157.1.1.1.1.39"
-	hwEthernetPortModePrefix = ".1.3.6.1.4.1.2011.5.25.157.1.1.1.1.39."
+	ethernetPortModeOid    = []string{"1.3.6.1.4.1.2011.5.25.157.1.1.1.1.39", "1.3.6.1.4.1.56813.5.25.157.1.1.1.1.39", "1.3.6.1.4.1.4881.1.1.10.2.10.1.1.1.15"}
+	ethernetPortModePrefix = []string{".1.3.6.1.4.1.2011.5.25.157.1.1.1.1.39.", ".1.3.6.1.4.1.56813.5.25.157.1.1.1.1.39.", ".1.3.6.1.4.1.4881.1.1.10.2.10.1.1.1.15."}
 
 	//以太网接口的双工模式
 	//INTEGER : full(1) half(2)
-	hwEthernetDuplexOid    = "1.3.6.1.4.1.2011.5.25.157.1.1.1.1.14"
-	hwEthernetDuplexPrefix = ".1.3.6.1.4.1.2011.5.25.157.1.1.1.1.14."
+	ethernetDuplexOid    = []string{"1.3.6.1.4.1.2011.5.25.157.1.1.1.1.14", "1.3.6.1.4.1.56813.5.25.157.1.1.1.1.14", "1.3.6.1.4.1.4881.1.1.10.2.10.1.1.1.8"}
+	ethernetDuplexPrefix = []string{".1.3.6.1.4.1.2011.5.25.157.1.1.1.1.14.", ".1.3.6.1.4.1.56813.5.25.157.1.1.1.1.14.", ".1.3.6.1.4.1.4881.1.1.10.2.10.1.1.1.8."}
 
 	//是否admin down up
 	//up(1),down(2),testing(3)
-	ifAdminStatusOid    = "1.3.6.1.2.1.2.2.1.7"
+	ifAdminStatusOid    = []string{"1.3.6.1.2.1.2.2.1.7"}
 	ifAdminStatusPrefix = ".1.3.6.1.2.1.2.2.1.7."
 
 	//接口描述
-	ifDescrOid    = "1.3.6.1.2.1.2.2.1.2"
+	ifDescrOid    = []string{"1.3.6.1.2.1.2.2.1.2"}
 	ifDescrPrefix = ".1.3.6.1.2.1.2.2.1.2."
 )
 
@@ -101,10 +102,10 @@ type IfStats struct {
 	IfInUnknownProtos    uint64 `json:"ifInUnknownProtos"`
 	IfOutQLen            uint64 `json:"ifOutQLen"`
 	IfOperStatus         int    `json:"ifOperStatus"`
-	HwL2IfPortType       uint64 `json:"hwL2IfPortType"`
-	HwL2IfPVID           uint64 `json:"hwL2IfPVID"`
-	HwEthernetPortMode   uint64 `json:"hwEthernetPortMode"`
-	HwEthernetDuplex     uint64 `json:"hwEthernetDuplex"`
+	L2IfPortType         uint64 `json:"l2IfPortType"`
+	L2IfPVID             uint64 `json:"l2IfPVID"`
+	EthernetPortMode     uint64 `json:"ethernetPortMode"`
+	EthernetDuplex       uint64 `json:"ethernetDuplex"`
 	IfAdminStatus        uint64 `json:"ifAdminStatus"`
 	IfDescr              string `json:"ifDescr"`
 	TS                   int64  `json:"ts"`
@@ -154,37 +155,37 @@ func ListIfStats(ip, community string, timeout int, ignoreIface []string, retry 
 		time.Sleep(sleep)
 	}
 
-	//hwL2IfPortType
-	var hwL2IfPortTypeList []gosnmp.SnmpPDU
-	chHwL2IfPortTypeList := make(chan []gosnmp.SnmpPDU)
+	//L2IfPortType
+	var l2IfPortTypeList []gosnmp.SnmpPDU
+	chL2IfPortTypeList := make(chan []gosnmp.SnmpPDU)
 	if ignoreHwL2IfPortType == false {
 		limitCh <- true
-		go ListHwL2IfPortType(ip, community, timeout, chHwL2IfPortTypeList, retry, limitCh, useSnmpGetNext)
+		go ListHwL2IfPortType(ip, community, timeout, chL2IfPortTypeList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
 	}
 
-	//hwL2IfPVID
-	var hwL2IfPVIDList []gosnmp.SnmpPDU
-	chHwL2IfPVIDList := make(chan []gosnmp.SnmpPDU)
+	//L2IfPVID
+	var l2IfPVIDList []gosnmp.SnmpPDU
+	chL2IfPVIDList := make(chan []gosnmp.SnmpPDU)
 	if ignoreHwL2IfPVID == false {
 		limitCh <- true
-		go ListHwL2IfPVlanId(ip, community, timeout, chHwL2IfPVIDList, retry, limitCh, useSnmpGetNext)
+		go ListHwL2IfPVlanId(ip, community, timeout, chL2IfPVIDList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
 	}
-	//hwEthernetPortModeOid
-	var hwEthernetPortModeList []gosnmp.SnmpPDU
-	chHwEthernetPortModeList := make(chan []gosnmp.SnmpPDU)
+	//ethernetPortModeOid
+	var ethernetPortModeList []gosnmp.SnmpPDU
+	chEthernetPortModeList := make(chan []gosnmp.SnmpPDU)
 	if ignoreHwL2IfPortType == false {
 		limitCh <- true
-		go ListHwEthernetPortMode(ip, community, timeout, chHwEthernetPortModeList, retry, limitCh, useSnmpGetNext)
+		go ListHwEthernetPortMode(ip, community, timeout, chEthernetPortModeList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
 	}
-	//hwEthernetDuplex
-	var hwEthernetDuplexList []gosnmp.SnmpPDU
-	chHwEthernetDuplexList := make(chan []gosnmp.SnmpPDU)
+	//EthernetDuplex
+	var ethernetDuplexList []gosnmp.SnmpPDU
+	chEthernetDuplexList := make(chan []gosnmp.SnmpPDU)
 	if ignoreHwL2IfPortType == false {
 		limitCh <- true
-		go ListHwEthernetDuplex(ip, community, timeout, chHwEthernetDuplexList, retry, limitCh, useSnmpGetNext)
+		go ListHwEthernetDuplex(ip, community, timeout, chEthernetDuplexList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
 	}
 
@@ -311,16 +312,16 @@ func ListIfStats(ip, community string, timeout int, ignoreIface []string, retry 
 		ifStatusList = <-chIfStatusList
 	}
 	if ignoreHwL2IfPortType == false {
-		hwL2IfPortTypeList = <-chHwL2IfPortTypeList
+		l2IfPortTypeList = <-chL2IfPortTypeList
 	}
 	if ignoreHwL2IfPVID == false {
-		hwL2IfPVIDList = <-chHwL2IfPVIDList
+		l2IfPVIDList = <-chL2IfPVIDList
 	}
 	if ignoreHwEthernetPortMode == false {
-		hwEthernetPortModeList = <-chHwEthernetPortModeList
+		ethernetPortModeList = <-chEthernetPortModeList
 	}
 	if ignoreHwEthernetDuplex == false {
-		hwEthernetDuplexList = <-chHwEthernetDuplexList
+		ethernetDuplexList = <-chEthernetDuplexList
 	}
 	if ignoreIfAdminStatus == false {
 		ifAdminStatusList = <-chIfAdminStatusList
@@ -449,37 +450,46 @@ func ListIfStats(ip, community string, timeout int, ignoreIface []string, retry 
 				}
 
 				if ignoreHwL2IfPortType == false {
-					for ti, hwL2IfPortTypePDU := range hwL2IfPortTypeList {
-						if strings.Replace(hwL2IfPortTypePDU.Name, hwL2IfPortTypeOidPrefix, "", 1) == ifIndexStr {
-							ifStats.HwL2IfPortType = gosnmp.ToBigInt(hwL2IfPortTypeList[ti].Value).Uint64()
-							break
+					for ti, l2IfPortTypePDU := range l2IfPortTypeList {
+						for _, oidPrefix := range l2IfPortTypeOidPrefix {
+							if strings.Replace(l2IfPortTypePDU.Name, oidPrefix, "", 1) == ifIndexStr {
+								ifStats.L2IfPortType = gosnmp.ToBigInt(l2IfPortTypeList[ti].Value).Uint64()
+								break
+							}
 						}
+
 					}
 				}
 
 				if ignoreHwL2IfPVID == false {
-					for ti, hwL2IfPVIDPDU := range hwL2IfPVIDList {
-						if strings.Replace(hwL2IfPVIDPDU.Name, hwL2IfPVIDOidPrefix, "", 1) == ifIndexStr {
-							ifStats.HwL2IfPVID = gosnmp.ToBigInt(hwL2IfPVIDList[ti].Value).Uint64()
-							break
+					for ti, l2IfPVIDPDU := range l2IfPVIDList {
+						for _, oidPrefix := range l2IfPVIDOidPrefix {
+							if strings.Replace(l2IfPVIDPDU.Name, oidPrefix, "", 1) == ifIndexStr {
+								ifStats.L2IfPVID = gosnmp.ToBigInt(l2IfPVIDList[ti].Value).Uint64()
+								break
+							}
 						}
 					}
 				}
 
 				if ignoreHwEthernetPortMode == false {
-					for ti, hwEthernetPortModePDU := range hwEthernetPortModeList {
-						if strings.Replace(hwEthernetPortModePDU.Name, hwEthernetPortModePrefix, "", 1) == ifIndexStr {
-							ifStats.HwEthernetPortMode = gosnmp.ToBigInt(hwEthernetPortModeList[ti].Value).Uint64()
-							break
+					for ti, ethernetPortModePDU := range ethernetPortModeList {
+						for _, oidPrefix := range ethernetPortModePrefix {
+							if strings.Replace(ethernetPortModePDU.Name, oidPrefix, "", 1) == ifIndexStr {
+								ifStats.EthernetPortMode = gosnmp.ToBigInt(ethernetPortModeList[ti].Value).Uint64()
+								break
+							}
 						}
 					}
 				}
 
 				if ignoreHwEthernetDuplex == false {
-					for ti, hwEthernetDuplexPDU := range hwEthernetDuplexList {
-						if strings.Replace(hwEthernetDuplexPDU.Name, hwEthernetDuplexPrefix, "", 1) == ifIndexStr {
-							ifStats.HwEthernetDuplex = gosnmp.ToBigInt(hwEthernetDuplexList[ti].Value).Uint64()
-							break
+					for ti, ethernetDuplexPDU := range ethernetDuplexList {
+						for _, oidPrefix := range ethernetDuplexPrefix {
+							if strings.Replace(ethernetDuplexPDU.Name, oidPrefix, "", 1) == ifIndexStr {
+								ifStats.EthernetDuplex = gosnmp.ToBigInt(ethernetDuplexList[ti].Value).Uint64()
+								break
+							}
 						}
 					}
 				}
@@ -606,19 +616,19 @@ func ListIfSpeed(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, re
 }
 
 func ListHwL2IfPortType(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
-	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, hwL2IfPortTypeOid)
+	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, l2IfPortTypeOid)
 }
 
 func ListHwL2IfPVlanId(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
-	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, hwL2IfPVIDOid)
+	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, l2IfPVIDOid)
 }
 
 func ListHwEthernetPortMode(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
-	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, hwEthernetPortModeOid)
+	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, ethernetPortModeOid)
 }
 
 func ListHwEthernetDuplex(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
-	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, hwEthernetDuplexOid)
+	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, ethernetDuplexOid)
 }
 
 func ListIfAdminStatus(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
@@ -628,16 +638,22 @@ func ListIfAdminStatus(ip, community string, timeout int, ch chan []gosnmp.SnmpP
 func ListIfDescr(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
 	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, ifDescrOid)
 }
-func RunSnmpRetry(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool, oid string) {
+
+func RunSnmpRetry(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool, oids []string) {
 	var snmpPDUs []gosnmp.SnmpPDU
 	var err error
-	if useSnmpGetNext {
-		snmpPDUs, err = RunSnmpGetNext(ip, community, oid, retry, timeout)
-	} else {
-		snmpPDUs, err = RunSnmpBulkWalk(ip, community, oid, retry, timeout)
+	for _, oid := range oids {
+		if useSnmpGetNext {
+			snmpPDUs, err = RunSnmpGetNext(ip, community, oid, retry, timeout)
+		} else {
+			snmpPDUs, err = RunSnmpBulkWalk(ip, community, oid, retry, timeout)
+		}
+		if len(snmpPDUs) > 0 {
+			break
+		}
 	}
 	if err != nil {
-		log.Println(ip, oid, err)
+		log.Println(ip, oids, err)
 		close(ch)
 		<-limitCh
 		return

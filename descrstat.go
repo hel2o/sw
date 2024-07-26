@@ -55,104 +55,134 @@ func SerialNumber(ip, community string, retry int, timeout int) (sn string, err 
 	return
 }
 
+const (
+	H3C_V5        = "H3C_V5"
+	H3C_V7        = "H3C_V7"
+	H3C_S9500     = "H3C_S9500"
+	H3C_V3_1      = "H3C_V3.1"
+	H3C_ER        = "H3C_ER"
+	H3C_S5024P    = "H3C_S5024P"
+	H3C_S2126T    = "H3C_S2126T"
+	H3C           = "H3C"
+	Cisco_NX      = "Cisco_NX"
+	Cisco_ASA_OLD = "Cisco_ASA_OLD"
+	Cisco_ASA     = "Cisco_ASA"
+	Cisco_IOS_XE  = "Cisco_IOS_XE"
+	Cisco_IOS_XR  = "Cisco_IOS_XR"
+	Cisco_old     = "Cisco_old"
+	Cisco         = "Cisco"
+	Huawei_ME60   = "Huawei_ME60"
+	Huawei_V5     = "Huawei_V5"
+	Huawei_V3_10  = "Huawei_V3.10"
+	Huawei        = "Huawei"
+	Ruijie        = "Ruijie"
+	Juniper       = "Juniper"
+	Dell          = "Dell"
+	Draytek       = "Draytek"
+	FortiGate     = "FortiGate"
+	Sundray       = "Sundray"
+	Linux         = "Linux"
+	FutureMatrix  = "FutureMatrix"
+)
+
 func SysVendor(ip, community string, retry int, timeout int) (string, error) {
 	sysDescr, err := SysDescription(ip, community, retry, timeout)
 	sysDescrLower := strings.ToLower(sysDescr)
 
 	if strings.Contains(sysDescrLower, "cisco nx-os") {
-		return "Cisco_NX", err
+		return Cisco_NX, err
 	}
 
 	if strings.Contains(sysDescr, "Cisco Internetwork Operating System Software") {
-		return "Cisco_old", err
+		return Cisco_old, err
 	}
 
 	if strings.Contains(sysDescrLower, "cisco ios") {
 		if strings.Contains(sysDescr, "IOS-XE Software") {
-			return "Cisco_IOS_XE", err
+			return Cisco_IOS_XE, err
 		} else if strings.Contains(sysDescr, "Cisco IOS XR") {
-			return "Cisco_IOS_XR", err
+			return Cisco_IOS_XR, err
 		} else {
-			return "Cisco", err
+			return Cisco, err
 		}
 	}
 
 	if strings.Contains(sysDescrLower, "cisco adaptive security appliance") {
 		version_number, err := strconv.ParseFloat(getVersionNumber(sysDescr), 32)
 		if err == nil && version_number < 9.2 {
-			return "Cisco_ASA_OLD", err
+			return Cisco_ASA_OLD, err
 		}
-		return "Cisco_ASA", err
+		return Cisco_ASA, err
 	}
 	if strings.Contains(sysDescrLower, "h3c") {
 		if strings.Contains(sysDescr, "Software Version 5") {
-			return "H3C_V5", err
+			return H3C_V5, err
 		}
 
 		if strings.Contains(sysDescr, "Software Version 7") {
-			return "H3C_V7", err
+			return H3C_V7, err
 		}
 
 		if strings.Contains(sysDescr, "Version S9500") {
-			return "H3C_S9500", err
+			return H3C_S9500, err
 		}
 
 		if strings.Contains(sysDescr, "Version 3.1") {
-			return "H3C_V3.1", err
+			return H3C_V3_1, err
 		}
 
 		if strings.Contains(sysDescr, "Version ER") {
-			return "H3C_ER", err
+			return H3C_ER, err
 		}
 
 		if strings.Contains(sysDescr, "S5024P") {
-			return "H3C_S5024P", err
+			return H3C_S5024P, err
 		}
 
 		if strings.Contains(sysDescr, "S2126T") {
-			return "H3C_S2126T", err
+			return H3C_S2126T, err
 		}
 
-		return "H3C", err
+		return H3C, err
 	}
 	if strings.Contains(sysDescrLower, "futurematrix") {
-		return "FutureMatrix", err
+		return FutureMatrix, err
 	}
 	if strings.Contains(sysDescrLower, "huawei") {
 		if strings.Contains(sysDescr, "MultiserviceEngine 60") {
-			return "Huawei_ME60", err
+			return Huawei_ME60, err
 		}
 		if strings.Contains(sysDescr, "Version 5.") {
-			return "Huawei_V5", err
+			return Huawei_V5, err
 		}
 		if strings.Contains(sysDescr, "Version 3.10") {
-			return "Huawei_V3.10", err
+			return Huawei_V3_10, err
 		}
-		return "Huawei", err
+		return Huawei, err
 	}
 
 	if strings.Contains(sysDescrLower, "ruijie") {
-		return "Ruijie", err
+		return Ruijie, err
 	}
 
 	if strings.Contains(sysDescrLower, "juniper networks") {
-		return "Juniper", err
+		return Juniper, err
 	}
 
 	if strings.Contains(sysDescrLower, "dell networking") {
-		return "Dell", err
+		return Dell, err
 	}
 	if strings.Contains(sysDescrLower, "draytek") {
-		return "Draytek", err
+		return Draytek, err
 	}
 	if strings.Contains(sysDescrLower, "fortigate") {
-		return "FortiGate", err
+		return FortiGate, err
 	}
 	if strings.Contains(sysDescrLower, "linux") {
 		if strings.Contains(sysDescrLower, "armv7l") {
-			return "Sundray", err
+			return Sundray, err
 		}
-		return "Linux", err
+		return Linux, err
 	}
 
 	return "", err

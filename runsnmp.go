@@ -10,6 +10,7 @@ import (
 
 const snmpGet = "get"
 const snmpGetNex = "getNext"
+const snmpWalk = "walk"
 const snmpBulkWalk = "bulkWalk"
 
 func RunSnmp(ip, community, oid, method string, retry, timeoutMillisecond int) (snmpPDUs []gosnmp.SnmpPDU, err error) {

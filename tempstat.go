@@ -25,14 +25,16 @@ func Temperature(ip, community string, timeout, retry int) (uint64, error) {
 
 	var oid string
 	switch vendor {
-	case "Huawei_V5":
+	case Huawei_V5:
 		oid = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.11"
-		return getCpuMemTemp(ip, community, oid, timeout, retry)
-	case "FutureMatrix":
+	case FutureMatrix:
 		oid = "1.3.6.1.4.1.56813.5.25.31.1.1.1.1.11"
-		return getCpuMemTemp(ip, community, oid, timeout, retry)
+	case Ruijie:
+		oid = "1.3.6.1.4.1.4881.1.1.10.2.1.1.16.0"
+	case H3C_V7:
+		oid = "1.3.6.1.4.1.25506.2.6.1.1.1.1.12.212"
 	default:
-		err = errors.New(ip + " Switch Temperature Vendor is not defined")
+		return 0, errors.New(ip + " Switch Temperature Vendor is not defined")
 	}
-	return 0, err
+	return getCpuMemTemp(ip, community, oid, timeout, retry)
 }

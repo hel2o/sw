@@ -29,9 +29,9 @@ func MemUtilization(ip, community string, timeout, retry int) (uint64, error) {
 	var oid string
 
 	switch vendor {
-	case "Cisco_NX":
+	case Cisco_NX:
 		oid = "1.3.6.1.4.1.9.9.305.1.1.2.0"
-	case "Cisco", "Cisco_IOS_XE", "Cisco_old":
+	case Cisco, Cisco_IOS_XE, Cisco_old:
 		memUsedOid := "1.3.6.1.4.1.9.9.48.1.1.1.5.1"
 		snmpMemUsed, _ := RunSnmp(ip, community, memUsedOid, method, retry, timeout)
 
@@ -53,38 +53,38 @@ func MemUtilization(ip, community string, timeout, retry int) (uint64, error) {
 				return uint64(memUtili * 100), nil
 			}
 		}
-	case "Cisco_IOS_XR":
+	case Cisco_IOS_XR:
 		return getCisco_IOS_XR_Mem(ip, community, timeout, retry)
-	case "Cisco_ASA", "Cisco_ASA_OLD":
+	case Cisco_ASA, Cisco_ASA_OLD:
 		return getCisco_ASA_Mem(ip, community, timeout, retry)
-	case "FutureMatrix":
+	case FutureMatrix:
 		oid = "1.3.6.1.4.1.56813.5.25.31.1.1.1.1.7"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
-	case "Huawei", "Huawei_V5":
+	case Huawei, Huawei_V5:
 		oid = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.7"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
-	case "Huawei_V3.10":
+	case Huawei_V3_10:
 		return getOldHuawei_Mem(ip, community, timeout, retry)
-	case "Huawei_ME60":
+	case Huawei_ME60:
 		return getHuawei_Me60_Mem(ip, community, timeout, retry)
-	case "H3C_V3.1":
+	case H3C_V3_1:
 		oid = "1.3.6.1.4.1.2011.10.2.6.1.1.1.1.8"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
-	case "H3C", "H3C_V5", "H3C_V7":
+	case H3C, H3C_V5, H3C_V7:
 		oid = "1.3.6.1.4.1.25506.2.6.1.1.1.1.8"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
-	case "H3C_S9500":
+	case H3C_S9500:
 		oid = "1.3.6.1.4.1.2011.10.2.6.1.1.1.1.8"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
-	case "Juniper":
+	case Juniper:
 		oid = "1.3.6.1.4.1.2636.3.1.13.1.11"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
-	case "Ruijie":
+	case Ruijie:
 		oid = "1.3.6.1.4.1.4881.1.1.10.2.35.1.1.1.3"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
-	case "Dell":
+	case Dell:
 		return GetDellMem(ip, community, timeout, retry)
-	case "FortiGate":
+	case FortiGate:
 		oid = "1.3.6.1.4.1.12356.101.4.1.4"
 		return getFortiGatecpumem(ip, community, oid, timeout, retry)
 	default:
@@ -112,7 +112,7 @@ func getCisco_IOS_XR_Mem(ip, community string, timeout, retry int) (uint64, erro
 		}
 	}()
 	cpuindex := "1.3.6.1.4.1.9.9.109.1.1.1.1.2"
-	method := "bulkWalk"
+	method := snmpBulkWalk
 	var snmpPDUs []gosnmp.SnmpPDU
 	var err error
 	var index string
@@ -147,7 +147,7 @@ func getOldHuawei_Mem(ip, community string, timeout, retry int) (uint64, error) 
 			log.Println(ip+" Recovered in MemUtilization", r)
 		}
 	}()
-	method := "walk"
+	method := snmpWalk
 	memTotalOid := "1.3.6.1.4.1.2011.6.1.2.1.1.2"
 	snmpMemTotal, err := RunSnmp(ip, community, memTotalOid, method, retry, timeout)
 	memFreeOid := "1.3.6.1.4.1.2011.6.1.2.1.1.3"
@@ -172,7 +172,7 @@ func getCisco_ASA_Mem(ip, community string, timeout, retry int) (uint64, error) 
 			log.Println(ip+" Recovered in MemUtilization", r)
 		}
 	}()
-	method := "bulkWalk"
+	method := snmpBulkWalk
 	memUsedOid := "1.3.6.1.4.1.9.9.221.1.1.1.1.18"
 	snmpMemUsed, err := RunSnmp(ip, community, memUsedOid, method, retry, timeout)
 	memFreeOid := "1.3.6.1.4.1.9.9.221.1.1.1.1.20"
@@ -210,7 +210,7 @@ func getHuawei_Me60_Mem(ip, community string, timeout, retry int) (uint64, error
 }
 
 func GetDellMem(ip, community string, timeout, retry int) (uint64, error) {
-	method := "bulkWalk"
+	method := snmpBulkWalk
 	memTotalOid := "1.3.6.1.4.1.674.10895.5000.2.6132.1.1.1.1.4.2"
 	memTotal, err := RunSnmp(ip, community, memTotalOid, method, retry, timeout)
 	memFreeOid := "1.3.6.1.4.1.674.10895.5000.2.6132.1.1.1.1.4.1"
