@@ -64,7 +64,7 @@ func CpuUtilization(ip, community string, timeout, retry int) (uint64, error) {
 	case H3C_ER:
 		oid = "1.3.6.1.2.1.25.3.3.1.2"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
-	case H3C_S9500:
+	case H3C_S9500, H3C_S5500:
 		oid = "1.3.6.1.4.1.2011.10.2.6.1.1.1.1.6"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case Juniper:
@@ -128,7 +128,7 @@ func getCpuMemTemp(ip, community, oid string, timeout, retry int) (value uint64,
 	var valid uint64
 	for _, pdu := range snmpPDUs {
 		v := gosnmp.ToBigInt(pdu.Value).Uint64()
-		if v > 0 {
+		if v > 0 && v <= 120 {
 			valid++
 			value = value + v
 		}

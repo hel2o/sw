@@ -73,9 +73,11 @@ func MemUtilization(ip, community string, timeout, retry int) (uint64, error) {
 	case H3C, H3C_V5, H3C_V7:
 		oid = "1.3.6.1.4.1.25506.2.6.1.1.1.1.8"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
-	case H3C_S9500:
+	case H3C_S9500, H3C_S5500:
 		oid = "1.3.6.1.4.1.2011.10.2.6.1.1.1.1.8"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
+	case H3C_ER:
+		return getH3C_ER_Mem(ip, community, timeout, retry)
 	case Juniper:
 		oid = "1.3.6.1.4.1.2636.3.1.13.1.11"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
@@ -208,7 +210,19 @@ func getHuawei_Me60_Mem(ip, community string, timeout, retry int) (uint64, error
 	}
 	return 0, err
 }
+func getH3C_ER_Mem(ip, community string, timeout, retry int) (uint64, error) {
+	memTotalOid := "1.3.6.1.2.1.25.2.3.1.5"
 
+	memTotal, _, err := snmp_walk_sum(ip, community, memTotalOid, timeout, retry)
+
+	memUsedOid := "1.3.6.1.2.1.25.2.3.1.6"
+	memUsed, _, err := snmp_walk_sum(ip, community, memUsedOid, timeout, retry)
+	if memTotal != 0 && memUsed != 0 {
+		memUsage := float64(memUsed) / float64(memTotal)
+		return uint64(memUsage * 100), nil
+	}
+	return 0, err
+}
 func GetDellMem(ip, community string, timeout, retry int) (uint64, error) {
 	method := snmpBulkWalk
 	memTotalOid := "1.3.6.1.4.1.674.10895.5000.2.6132.1.1.1.1.4.2"
@@ -223,6 +237,7 @@ func GetDellMem(ip, community string, timeout, retry int) (uint64, error) {
 	}
 	return 0, err
 }
+
 func GetLinuxMem(ip, community string, timeout, retry int) (uint64, error) {
 	method := snmpGet
 	memTotalOid := "1.3.6.1.4.1.2021.4.5.0"

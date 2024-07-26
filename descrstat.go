@@ -59,6 +59,7 @@ const (
 	H3C_V5        = "H3C_V5"
 	H3C_V7        = "H3C_V7"
 	H3C_S9500     = "H3C_S9500"
+	H3C_S5500     = "H3C_S5500"
 	H3C_V3_1      = "H3C_V3.1"
 	H3C_ER        = "H3C_ER"
 	H3C_S5024P    = "H3C_S5024P"
@@ -118,31 +119,27 @@ func SysVendor(ip, community string, retry int, timeout int) (string, error) {
 		if strings.Contains(sysDescr, "Software Version 5") {
 			return H3C_V5, err
 		}
-
 		if strings.Contains(sysDescr, "Software Version 7") {
 			return H3C_V7, err
 		}
-
+		if strings.Contains(sysDescr, "S5500-SI") {
+			return H3C_S5500, err
+		}
 		if strings.Contains(sysDescr, "Version S9500") {
 			return H3C_S9500, err
 		}
-
 		if strings.Contains(sysDescr, "Version 3.1") {
 			return H3C_V3_1, err
 		}
-
 		if strings.Contains(sysDescr, "Version ER") {
 			return H3C_ER, err
 		}
-
 		if strings.Contains(sysDescr, "S5024P") {
 			return H3C_S5024P, err
 		}
-
 		if strings.Contains(sysDescr, "S2126T") {
 			return H3C_S2126T, err
 		}
-
 		return H3C, err
 	}
 	if strings.Contains(sysDescrLower, "futurematrix") {
