@@ -23,12 +23,21 @@ func SystemName(ip, community string, retry int, timeout int) (name string, err 
 }
 
 func SysDescription(ip, community string, retry int, timeout int) (desc string, err error) {
+	//sysDescr
 	oid := "1.3.6.1.2.1.1.1.0"
 	method := snmpGet
 	var snmpPDUs []gosnmp.SnmpPDU
 	snmpPDUs, err = RunSnmp(ip, community, oid, method, retry, timeout)
 	if err != nil {
 		return
+	}
+	if len(snmpPDUs) == 0 || string(snmpPDUs[0].Value.([]byte)) == "" {
+		//sysContact
+		oid = "1.3.6.1.2.1.1.4.0"
+		snmpPDUs, err = RunSnmp(ip, community, oid, method, retry, timeout)
+		if err != nil {
+			return
+		}
 	}
 	for _, pdu := range snmpPDUs {
 		if pdu.Value != nil && len(string(pdu.Value.([]byte))) > 0 {
@@ -45,6 +54,14 @@ func SerialNumber(ip, community string, retry int, timeout int) (sn string, err 
 	snmpPDUs, err = RunSnmp(ip, community, oid, method, retry, timeout)
 	if err != nil {
 		return
+	}
+	if len(snmpPDUs) == 0 {
+		//信锐
+		oid = ".1.3.6.1.4.1.45577.5.7.6.0"
+		snmpPDUs, err = RunSnmp(ip, community, oid, method, retry, timeout)
+		if err != nil {
+			return
+		}
 	}
 	for _, pdu := range snmpPDUs {
 		if pdu.Value != nil && len(string(pdu.Value.([]byte))) > 0 {
