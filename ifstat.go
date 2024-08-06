@@ -2,6 +2,7 @@ package sw
 
 import (
 	"fmt"
+	"github.com/spf13/cast"
 	"log"
 	"strconv"
 	"strings"
@@ -52,16 +53,21 @@ var (
 	ifOutQLenOid    = []string{"1.3.6.1.2.1.2.2.1.21"}
 	ifOutQLenPrefix = ".1.3.6.1.2.1.2.2.1.21."
 
+	//2011 华为 早期华三交换机
+	//25506 新华三交换机
+	//56813 华为智选
+	//4881 锐捷交换机
+	//45577 信锐安视交换机
+
 	//二层端口类型
 	//华为 trunk(1) invalid(0) access(2) hybrid(3) fabric(4) qinq(5) desirable(6) auto(7)
+	//华三vLANTrunk(1),access(2),hybrid(3),fabric(4) hh3cifVLANType
 	//锐捷 access(1), trunk(2), dot1q-tunnel(3),hybrid(4), other(5), uplink(6),host(7) or promiscuous(8) port.
-	l2IfPortTypeOid       = []string{"1.3.6.1.4.1.2011.5.25.42.1.1.1.3.1.3", "1.3.6.1.4.1.56813.5.25.42.1.1.1.3.1.3", "1.3.6.1.4.1.4881.1.1.10.2.9.1.6.1.2"}
-	l2IfPortTypeOidPrefix = []string{".1.3.6.1.4.1.2011.5.25.42.1.1.1.3.1.3.", ".1.3.6.1.4.1.56813.5.25.42.1.1.1.3.1.3.", ".1.3.6.1.4.1.4881.1.1.10.2.9.1.6.1.2."}
+	l2IfPortTypeOid = []string{"1.3.6.1.4.1.2011.5.25.42.1.1.1.3.1.3", "1.3.6.1.4.1.56813.5.25.42.1.1.1.3.1.3", "1.3.6.1.4.1.4881.1.1.10.2.10.1.1.1.24", "1.3.6.1.4.1.25506.8.35.1.1.1.5", "1.3.6.1.4.1.45577.5.7.9.1.3"}
 
 	//二层端口的VLAN ID
 	//取值范围为0～4094。如果设置为0，则hwL2IfPVID恢复为缺省值1
-	l2IfPVIDOid       = []string{"1.3.6.1.4.1.2011.5.25.42.1.1.1.3.1.4", "1.3.6.1.4.1.56813.5.25.42.1.1.1.3.1.4", "1.3.6.1.4.1.4881.1.1.10.2.9.1.6.1.3"}
-	l2IfPVIDOidPrefix = []string{".1.3.6.1.4.1.2011.5.25.42.1.1.1.3.1.4.", ".1.3.6.1.4.1.56813.5.25.42.1.1.1.3.1.4.", ".1.3.6.1.4.1.4881.1.1.10.2.9.1.6.1.3."}
+	l2IfPvidOid = []string{"1.3.6.1.4.1.2011.5.25.42.1.1.1.3.1.4", "1.3.6.1.4.1.56813.5.25.42.1.1.1.3.1.4", "1.3.6.1.4.1.4881.1.1.10.2.9.1.6.1.3", "1.3.6.1.4.1.45577.5.7.9.1.6"}
 
 	//二层端口的模式
 	//INTEGER : copper(1)2: fiber(2)3: other(3)
@@ -70,8 +76,8 @@ var (
 
 	//以太网接口的双工模式
 	//INTEGER : full(1) half(2)
-	ethernetDuplexOid    = []string{"1.3.6.1.4.1.2011.5.25.157.1.1.1.1.14", "1.3.6.1.4.1.56813.5.25.157.1.1.1.1.14", "1.3.6.1.4.1.4881.1.1.10.2.10.1.1.1.8"}
-	ethernetDuplexPrefix = []string{".1.3.6.1.4.1.2011.5.25.157.1.1.1.1.14.", ".1.3.6.1.4.1.56813.5.25.157.1.1.1.1.14.", ".1.3.6.1.4.1.4881.1.1.10.2.10.1.1.1.8."}
+	ethernetDuplexOid    = []string{"1.3.6.1.4.1.2011.5.25.157.1.1.1.1.14", "1.3.6.1.4.1.56813.5.25.157.1.1.1.1.14", "1.3.6.1.4.1.4881.1.1.10.2.10.1.1.1.8", "1.3.6.1.4.1.25506.8.35.5.1.4.1.3"}
+	ethernetDuplexPrefix = []string{".1.3.6.1.4.1.2011.5.25.157.1.1.1.1.14.", ".1.3.6.1.4.1.56813.5.25.157.1.1.1.1.14.", ".1.3.6.1.4.1.4881.1.1.10.2.10.1.1.1.8.", ".1.3.6.1.4.1.25506.8.35.5.1.4.1.3."}
 
 	//是否admin down up
 	//up(1),down(2),testing(3)
@@ -81,6 +87,11 @@ var (
 	//接口描述
 	ifDescrOid    = []string{"1.3.6.1.2.1.2.2.1.2"}
 	ifDescrPrefix = ".1.3.6.1.2.1.2.2.1.2."
+
+	ifVlanPortListOid = []string{"1.3.6.1.4.1.25506.8.35.2.1.1.1.19"}
+
+	//这个是在获取PortType和PVID时用的，因为只有二层接口才有这个属性
+	l2IfName = []string{"1.3.6.1.4.1.2011.5.25.42.1.1.1.3.1.19", "1.3.6.1.4.1.56813.5.25.42.1.1.1.3.1.19", "1.3.6.1.4.1.45577.5.7.9.1.2"}
 )
 
 type IfStats struct {
@@ -104,6 +115,7 @@ type IfStats struct {
 	IfOperStatus         int    `json:"ifOperStatus"`
 	L2IfPortType         uint64 `json:"l2IfPortType"`
 	L2IfPVID             uint64 `json:"l2IfPVID"`
+	L2IfTrunkAllowedVlan string `json:"l2IfTrunkAllowedVlan"`
 	EthernetPortMode     uint64 `json:"ethernetPortMode"`
 	EthernetDuplex       uint64 `json:"ethernetDuplex"`
 	IfAdminStatus        uint64 `json:"ifAdminStatus"`
@@ -115,7 +127,7 @@ func (this *IfStats) String() string {
 	return fmt.Sprintf("<IfName:%s, IfIndex:%d, IfHCInOctets:%d, IfHCOutOctets:%d>", this.IfName, this.IfIndex, this.IfHCInOctets, this.IfHCOutOctets)
 }
 
-func ListIfStats(ip, community string, timeout int, ignoreIface []string, retry int, limitConn int, ignorePkt bool, ignoreOperStatus bool, ignoreBroadcastPkt bool, ignoreMulticastPkt bool, ignoreDiscards bool, ignoreErrors bool, ignoreUnknownProtos bool, ignoreOutQLen bool, ignoreHwL2IfPortType bool, ignoreHwL2IfPVID bool, ignoreHwEthernetPortMode bool, ignoreHwEthernetDuplex bool, ignoreIfAdminStatus bool, ignoreIfDescr bool, useSnmpGetNext bool) ([]IfStats, error) {
+func ListIfStats(ip, community string, timeout int, interfaces []string, retry int, limitConn int, ignorePkt bool, ignoreOperStatus bool, ignoreBroadcastPkt bool, ignoreMulticastPkt bool, ignoreDiscards bool, ignoreErrors bool, ignoreUnknownProtos bool, ignoreOutQLen bool, ignoreL2IfPortType bool, ignoreL2IfPVID bool, ignoreEthernetPortMode bool, ignoreEthernetDuplex bool, ignoreIfAdminStatus bool, ignoreIfDescr bool, useSnmpGetNext bool) ([]IfStats, error) {
 	var ifStatsList []IfStats
 	var limitCh chan bool
 	if limitConn > 0 {
@@ -158,34 +170,34 @@ func ListIfStats(ip, community string, timeout int, ignoreIface []string, retry 
 	//L2IfPortType
 	var l2IfPortTypeList []gosnmp.SnmpPDU
 	chL2IfPortTypeList := make(chan []gosnmp.SnmpPDU)
-	if ignoreHwL2IfPortType == false {
+	if ignoreL2IfPortType == false {
 		limitCh <- true
-		go ListHwL2IfPortType(ip, community, timeout, chL2IfPortTypeList, retry, limitCh, useSnmpGetNext)
+		go ListL2IfPortType(ip, community, timeout, chL2IfPortTypeList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
 	}
 
 	//L2IfPVID
 	var l2IfPVIDList []gosnmp.SnmpPDU
 	chL2IfPVIDList := make(chan []gosnmp.SnmpPDU)
-	if ignoreHwL2IfPVID == false {
+	if ignoreL2IfPVID == false {
 		limitCh <- true
-		go ListHwL2IfPVlanId(ip, community, timeout, chL2IfPVIDList, retry, limitCh, useSnmpGetNext)
+		go ListL2IfPVlanId(ip, community, timeout, chL2IfPVIDList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
 	}
 	//ethernetPortModeOid
 	var ethernetPortModeList []gosnmp.SnmpPDU
 	chEthernetPortModeList := make(chan []gosnmp.SnmpPDU)
-	if ignoreHwL2IfPortType == false {
+	if ignoreL2IfPortType == false {
 		limitCh <- true
-		go ListHwEthernetPortMode(ip, community, timeout, chEthernetPortModeList, retry, limitCh, useSnmpGetNext)
+		go ListEthernetPortMode(ip, community, timeout, chEthernetPortModeList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
 	}
 	//EthernetDuplex
 	var ethernetDuplexList []gosnmp.SnmpPDU
 	chEthernetDuplexList := make(chan []gosnmp.SnmpPDU)
-	if ignoreHwL2IfPortType == false {
+	if ignoreL2IfPortType == false {
 		limitCh <- true
-		go ListHwEthernetDuplex(ip, community, timeout, chEthernetDuplexList, retry, limitCh, useSnmpGetNext)
+		go ListEthernetDuplex(ip, community, timeout, chEthernetDuplexList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
 	}
 
@@ -311,16 +323,16 @@ func ListIfStats(ip, community string, timeout int, ignoreIface []string, retry 
 	if ignoreOperStatus == false {
 		ifStatusList = <-chIfStatusList
 	}
-	if ignoreHwL2IfPortType == false {
+	if ignoreL2IfPortType == false {
 		l2IfPortTypeList = <-chL2IfPortTypeList
 	}
-	if ignoreHwL2IfPVID == false {
+	if ignoreL2IfPVID == false {
 		l2IfPVIDList = <-chL2IfPVIDList
 	}
-	if ignoreHwEthernetPortMode == false {
+	if ignoreEthernetPortMode == false {
 		ethernetPortModeList = <-chEthernetPortModeList
 	}
-	if ignoreHwEthernetDuplex == false {
+	if ignoreEthernetDuplex == false {
 		ethernetDuplexList = <-chEthernetDuplexList
 	}
 	if ignoreIfAdminStatus == false {
@@ -355,19 +367,20 @@ func ListIfStats(ip, community string, timeout int, ignoreIface []string, retry 
 	if ignoreOutQLen == false {
 		ifOutQLenList = <-chIfOutQLenList
 	}
+	var ifCount int
 
 	if len(ifNameList) > 0 && len(ifInList) > 0 && len(ifOutList) > 0 {
 		now := time.Now().Unix()
-
 		for _, ifNamePDU := range ifNameList {
-			//fmt.Printf("%+v\n", ifNamePDU.Type)
 			ifName := string(ifNamePDU.Value.([]byte))
 
-			check := true
-			if len(ignoreIface) > 0 {
-				for _, ignore := range ignoreIface {
-					if strings.Contains(ifName, ignore) {
-						check = false
+			check := false
+			if len(interfaces) > 0 {
+				for _, inter := range interfaces {
+					//以包含的接口名开头
+					if strings.HasPrefix(strings.ToLower(ifName), strings.ToLower(inter)) {
+						check = true
+						ifCount++
 						break
 					}
 				}
@@ -377,7 +390,6 @@ func ListIfStats(ip, community string, timeout int, ignoreIface []string, retry 
 				var ifStats IfStats
 
 				ifIndexStr := strings.Replace(ifNamePDU.Name, ifNameOidPrefix, "", 1)
-
 				ifStats.IfIndex, _ = strconv.Atoi(ifIndexStr)
 
 				for ti, ifHCInOctetsPDU := range ifInList {
@@ -449,30 +461,30 @@ func ListIfStats(ip, community string, timeout int, ignoreIface []string, retry 
 					}
 				}
 
-				if ignoreHwL2IfPortType == false {
-					for ti, l2IfPortTypePDU := range l2IfPortTypeList {
-						for _, oidPrefix := range l2IfPortTypeOidPrefix {
-							if strings.Replace(l2IfPortTypePDU.Name, oidPrefix, "", 1) == ifIndexStr {
-								ifStats.L2IfPortType = gosnmp.ToBigInt(l2IfPortTypeList[ti].Value).Uint64()
-								break
-							}
-						}
+				//if ignoreL2IfPortType == false {
+				//	for ti, l2IfPortTypePDU := range l2IfPortTypeList {
+				//		for _, oidPrefix := range l2IfPortTypeOidPrefix {
+				//			if strings.Replace(l2IfPortTypePDU.Name, oidPrefix, "", 1) == ifIndexStr {
+				//				ifStats.L2IfPortType = gosnmp.ToBigInt(l2IfPortTypeList[ti].Value).Uint64()
+				//				break
+				//			}
+				//
+				//		}
+				//	}
+				//}
 
-					}
-				}
+				//if ignoreL2IfPVID == false {
+				//	for ti, l2IfPVIDPDU := range l2IfPVIDList {
+				//		for _, oidPrefix := range l2IfPVIDOidPrefix {
+				//			if strings.Replace(l2IfPVIDPDU.Name, oidPrefix, "", 1) == ifIndexStr {
+				//				ifStats.L2IfPVID = gosnmp.ToBigInt(l2IfPVIDList[ti].Value).Uint64()
+				//				break
+				//			}
+				//		}
+				//	}
+				//}
 
-				if ignoreHwL2IfPVID == false {
-					for ti, l2IfPVIDPDU := range l2IfPVIDList {
-						for _, oidPrefix := range l2IfPVIDOidPrefix {
-							if strings.Replace(l2IfPVIDPDU.Name, oidPrefix, "", 1) == ifIndexStr {
-								ifStats.L2IfPVID = gosnmp.ToBigInt(l2IfPVIDList[ti].Value).Uint64()
-								break
-							}
-						}
-					}
-				}
-
-				if ignoreHwEthernetPortMode == false {
+				if ignoreEthernetPortMode == false {
 					for ti, ethernetPortModePDU := range ethernetPortModeList {
 						for _, oidPrefix := range ethernetPortModePrefix {
 							if strings.Replace(ethernetPortModePDU.Name, oidPrefix, "", 1) == ifIndexStr {
@@ -483,7 +495,7 @@ func ListIfStats(ip, community string, timeout int, ignoreIface []string, retry 
 					}
 				}
 
-				if ignoreHwEthernetDuplex == false {
+				if ignoreEthernetDuplex == false {
 					for ti, ethernetDuplexPDU := range ethernetDuplexList {
 						for _, oidPrefix := range ethernetDuplexPrefix {
 							if strings.Replace(ethernetDuplexPDU.Name, oidPrefix, "", 1) == ifIndexStr {
@@ -543,7 +555,100 @@ func ListIfStats(ip, community string, timeout int, ignoreIface []string, retry 
 			}
 		}
 	}
+	//以下是处理了锐捷 信锐采集接口类型和PVID的情况
+	if ignoreL2IfPortType == false || ignoreL2IfPVID == false {
+		chIfNameList_ := make(chan []gosnmp.SnmpPDU)
+		limitCh <- true
+		go ListIfName_(ip, community, timeout, chIfNameList_, retry, limitCh, useSnmpGetNext)
+		ifNameList_ := <-chIfNameList_
 
+		var ifNamePortTypeMap = make(map[string]uint64)
+		var ifNamePVIDMap = make(map[string]uint64)
+		if len(ifNameList_) == 0 {
+			if len(l2IfPVIDList) > 0 && len(l2IfPortTypeList) > 0 {
+				ifNameList_ = ifNameList
+				for _, pdu := range l2IfPortTypeList {
+					start := strings.LastIndex(pdu.Name, ".")
+					ifNamePortTypeMap[pdu.Name[start+1:]] = gosnmp.ToBigInt(pdu.Value).Uint64()
+				}
+				for _, pdu := range l2IfPVIDList {
+					start := strings.LastIndex(pdu.Name, ".")
+					ifNamePVIDMap[pdu.Name[start+1:]] = gosnmp.ToBigInt(pdu.Value).Uint64()
+				}
+				for i, stats := range ifStatsList {
+					pt, ok1 := ifNamePortTypeMap[fmt.Sprintf("%d", stats.IfIndex)]
+					if ok1 {
+						ifStatsList[i].L2IfPortType = pt
+					}
+					pvid, ok2 := ifNamePVIDMap[fmt.Sprintf("%d", stats.IfIndex)]
+					if ok2 {
+						ifStatsList[i].L2IfPVID = pvid
+					}
+				}
+				//	新华三的处理
+			} else if len(l2IfPVIDList) == 0 {
+				limitCh <- true
+				chIfVlanPortList := make(chan []gosnmp.SnmpPDU)
+				go ListIfVlanPortList(ip, community, timeout, chIfVlanPortList, retry, limitCh, useSnmpGetNext)
+				ifVlanPortList := <-chIfVlanPortList
+				if len(ifVlanPortList) > 0 {
+					var ifPortVlanMap = make(map[string][]string)
+					for _, pdu := range ifVlanPortList {
+						start := strings.LastIndex(pdu.Name, ".")
+						vlanId := pdu.Name[start+1:]
+						for _, port := range strings.Split(string(pdu.Value.([]byte)), ",") {
+							if port != "" {
+								ifPortVlanMap[port] = append(ifPortVlanMap[port], vlanId)
+							}
+						}
+					}
+					for i, stats := range ifStatsList {
+						if vlanIds, ok := ifPortVlanMap[fmt.Sprintf("%d", stats.IfIndex)]; ok {
+							if len(vlanIds) > 0 {
+								if len(vlanIds) == 1 && vlanIds[0] == "1" {
+									ifStatsList[i].L2IfPortType = 3 //hybrid
+									ifStatsList[i].L2IfTrunkAllowedVlan = "1-4094"
+									ifStatsList[i].L2IfPVID = 1
+								} else if len(vlanIds) == 1 && vlanIds[0] != "1" {
+									ifStatsList[i].L2IfPortType = 2 //access
+									ifStatsList[i].L2IfPVID = cast.ToUint64(vlanIds[0])
+								} else {
+									ifStatsList[i].L2IfPortType = 1 //trunk
+									ifStatsList[i].L2IfPVID = 1
+									ifStatsList[i].L2IfTrunkAllowedVlan = strings.Join(vlanIds, ",")
+								}
+
+							}
+						}
+					}
+				}
+			}
+		} else {
+			for i, snmpPDU := range ifNameList_ {
+				//信锐的处理
+				ifName := string(snmpPDU.Value.([]byte))
+				if t, ok := l2IfPortTypeList[i].Value.([]byte); ok {
+					switch string(t) {
+					case "access":
+						ifNamePortTypeMap[ifName] = 2
+					case "trunk":
+						ifNamePortTypeMap[ifName] = 1
+					case "hybrid":
+						ifNamePortTypeMap[ifName] = 3
+					}
+				} else {
+					ifNamePortTypeMap[ifName] = gosnmp.ToBigInt(l2IfPortTypeList[i].Value).Uint64()
+				}
+
+				ifNamePVIDMap[ifName] = gosnmp.ToBigInt(l2IfPVIDList[i].Value).Uint64()
+			}
+			for i, stats := range ifStatsList {
+				ifStatsList[i].L2IfPortType = ifNamePortTypeMap[stats.IfName]
+				ifStatsList[i].L2IfPVID = ifNamePVIDMap[stats.IfName]
+			}
+		}
+
+	}
 	return ifStatsList, nil
 }
 
@@ -553,6 +658,10 @@ func ListIfOperStatus(ip, community string, timeout int, ch chan []gosnmp.SnmpPD
 
 func ListIfName(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
 	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, ifNameOid)
+}
+
+func ListIfName_(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
+	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, l2IfName)
 }
 
 func ListIfHCInOctets(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
@@ -615,19 +724,19 @@ func ListIfSpeed(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, re
 	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, ifSpeedOid)
 }
 
-func ListHwL2IfPortType(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
+func ListL2IfPortType(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
 	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, l2IfPortTypeOid)
 }
 
-func ListHwL2IfPVlanId(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
-	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, l2IfPVIDOid)
+func ListL2IfPVlanId(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
+	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, l2IfPvidOid)
 }
 
-func ListHwEthernetPortMode(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
+func ListEthernetPortMode(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
 	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, ethernetPortModeOid)
 }
 
-func ListHwEthernetDuplex(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
+func ListEthernetDuplex(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
 	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, ethernetDuplexOid)
 }
 
@@ -637,6 +746,10 @@ func ListIfAdminStatus(ip, community string, timeout int, ch chan []gosnmp.SnmpP
 
 func ListIfDescr(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
 	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, ifDescrOid)
+}
+
+func ListIfVlanPortList(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
+	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, ifVlanPortListOid)
 }
 
 func RunSnmpRetry(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool, oids []string) {
