@@ -9,7 +9,7 @@ import (
 func SysModel(ip, community string, retry int, timeout int) (model string, err error) {
 	var vendor string
 	if v, ok := VendorMap.Load(ip); !ok {
-		vendor, err = SysVendor(ip, community, retry, timeout)
+		vendor, _, err = SysVendor(ip, community, retry, timeout)
 		if err != nil {
 			return "", err
 		}

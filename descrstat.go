@@ -103,103 +103,104 @@ const (
 	FutureMatrix  = "FutureMatrix"
 )
 
-func SysVendor(ip, community string, retry int, timeout int) (string, error) {
-	sysDescr, err := SysDescription(ip, community, retry, timeout)
-	sysDescrLower := strings.ToLower(sysDescr)
+func SysVendor(ip, community string, retry int, timeout int) (Version, sysDesc string, err error) {
+	sysDesc, err = SysDescription(ip, community, retry, timeout)
+	sysDescLower := strings.ToLower(sysDesc)
 
-	if strings.Contains(sysDescrLower, "cisco nx-os") {
-		return Cisco_NX, err
+	if strings.Contains(sysDescLower, "cisco nx-os") {
+		return Cisco_NX, sysDesc, err
 	}
 
-	if strings.Contains(sysDescr, "Cisco Internetwork Operating System Software") {
-		return Cisco_old, err
+	if strings.Contains(sysDesc, "Cisco Internetwork Operating System Software") {
+		return Cisco_old, sysDesc, err
 	}
 
-	if strings.Contains(sysDescrLower, "cisco ios") {
-		if strings.Contains(sysDescr, "IOS-XE Software") {
-			return Cisco_IOS_XE, err
-		} else if strings.Contains(sysDescr, "Cisco IOS XR") {
-			return Cisco_IOS_XR, err
+	if strings.Contains(sysDescLower, "cisco ios") {
+		if strings.Contains(sysDesc, "IOS-XE Software") {
+			return Cisco_IOS_XE, sysDesc, err
+		} else if strings.Contains(sysDesc, "Cisco IOS XR") {
+			return Cisco_IOS_XR, sysDesc, err
 		} else {
-			return Cisco, err
+			return Cisco, sysDesc, err
 		}
 	}
 
-	if strings.Contains(sysDescrLower, "cisco adaptive security appliance") {
-		version_number, err := strconv.ParseFloat(getVersionNumber(sysDescr), 32)
-		if err == nil && version_number < 9.2 {
-			return Cisco_ASA_OLD, err
+	if strings.Contains(sysDescLower, "cisco adaptive security appliance") {
+		var versionNumber float64
+		versionNumber, err = strconv.ParseFloat(getVersionNumber(sysDesc), 32)
+		if err == nil && versionNumber < 9.2 {
+			return Cisco_ASA_OLD, sysDesc, err
 		}
-		return Cisco_ASA, err
+		return Cisco_ASA, sysDesc, err
 	}
-	if strings.Contains(sysDescrLower, "h3c") {
-		if strings.Contains(sysDescr, "Software Version 5") {
-			return H3C_V5, err
+	if strings.Contains(sysDescLower, "h3c") {
+		if strings.Contains(sysDesc, "Software Version 5") {
+			return H3C_V5, sysDesc, err
 		}
-		if strings.Contains(sysDescr, "Software Version 7") {
-			return H3C_V7, err
+		if strings.Contains(sysDesc, "Software Version 7") {
+			return H3C_V7, sysDesc, err
 		}
-		if strings.Contains(sysDescr, "S5500-SI") {
-			return H3C_S5500, err
+		if strings.Contains(sysDesc, "S5500-SI") {
+			return H3C_S5500, sysDesc, err
 		}
-		if strings.Contains(sysDescr, "Version S9500") {
-			return H3C_S9500, err
+		if strings.Contains(sysDesc, "Version S9500") {
+			return H3C_S9500, sysDesc, err
 		}
-		if strings.Contains(sysDescr, "Version 3.1") {
-			return H3C_V3_1, err
+		if strings.Contains(sysDesc, "Version 3.1") {
+			return H3C_V3_1, sysDesc, err
 		}
-		if strings.Contains(sysDescr, "Version ER") {
-			return H3C_ER, err
+		if strings.Contains(sysDesc, "Version ER") {
+			return H3C_ER, sysDesc, err
 		}
-		if strings.Contains(sysDescr, "S5024P") {
-			return H3C_S5024P, err
+		if strings.Contains(sysDesc, "S5024P") {
+			return H3C_S5024P, sysDesc, err
 		}
-		if strings.Contains(sysDescr, "S2126T") {
-			return H3C_S2126T, err
+		if strings.Contains(sysDesc, "S2126T") {
+			return H3C_S2126T, sysDesc, err
 		}
-		return H3C, err
+		return H3C, sysDesc, err
 	}
-	if strings.Contains(sysDescrLower, "futurematrix") {
-		return FutureMatrix, err
+	if strings.Contains(sysDescLower, "futurematrix") {
+		return FutureMatrix, sysDesc, err
 	}
-	if strings.Contains(sysDescrLower, "huawei") {
-		if strings.Contains(sysDescr, "MultiserviceEngine 60") {
-			return Huawei_ME60, err
+	if strings.Contains(sysDescLower, "huawei") {
+		if strings.Contains(sysDesc, "MultiserviceEngine 60") {
+			return Huawei_ME60, sysDesc, err
 		}
-		if strings.Contains(sysDescr, "Version 5.") {
-			return Huawei_V5, err
+		if strings.Contains(sysDesc, "Version 5.") {
+			return Huawei_V5, sysDesc, err
 		}
-		if strings.Contains(sysDescr, "Version 3.10") {
-			return Huawei_V3_10, err
+		if strings.Contains(sysDesc, "Version 3.10") {
+			return Huawei_V3_10, sysDesc, err
 		}
-		return Huawei, err
-	}
-
-	if strings.Contains(sysDescrLower, "ruijie") {
-		return Ruijie, err
+		return Huawei, sysDesc, err
 	}
 
-	if strings.Contains(sysDescrLower, "juniper networks") {
-		return Juniper, err
+	if strings.Contains(sysDescLower, "ruijie") {
+		return Ruijie, sysDesc, err
 	}
 
-	if strings.Contains(sysDescrLower, "dell networking") {
-		return Dell, err
+	if strings.Contains(sysDescLower, "juniper networks") {
+		return Juniper, sysDesc, err
 	}
-	if strings.Contains(sysDescrLower, "draytek") {
-		return Draytek, err
+
+	if strings.Contains(sysDescLower, "dell networking") {
+		return Dell, sysDesc, err
 	}
-	if strings.Contains(sysDescrLower, "fortigate") {
-		return FortiGate, err
+	if strings.Contains(sysDescLower, "draytek") {
+		return Draytek, sysDesc, err
 	}
-	if strings.Contains(sysDescrLower, "linux") {
-		if strings.Contains(sysDescrLower, "armv7l") {
-			return Sundray, err
+	if strings.Contains(sysDescLower, "fortigate") {
+		return FortiGate, sysDesc, err
+	}
+	if strings.Contains(sysDescLower, "linux") {
+		if strings.Contains(sysDescLower, "armv7l") {
+			return Sundray, sysDesc, err
 		}
-		return Linux, err
+		return Linux, sysDesc, err
 	}
 
-	return "", err
+	return "", sysDesc, err
 }
 
 func getVersionNumber(sysdescr string) string {

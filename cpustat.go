@@ -20,7 +20,7 @@ func CpuUtilization(ip, community string, timeout, retry int) (uint64, error) {
 	var vendor string
 	var err error
 	if v, ok := VendorMap.Load(ip); !ok {
-		vendor, err = SysVendor(ip, community, retry, timeout)
+		vendor, _, err = SysVendor(ip, community, retry, timeout)
 		if err != nil {
 			return 0, err
 		}
