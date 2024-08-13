@@ -7,6 +7,37 @@ import (
 	"strings"
 )
 
+const (
+	H3C_V5        = "H3C_V5"
+	H3C_V7        = "H3C_V7"
+	H3C_S9500     = "H3C_S9500"
+	H3C_S5500     = "H3C_S5500"
+	H3C_V3_1      = "H3C_V3.1"
+	H3C_ER        = "H3C_ER"
+	H3C_S5024P    = "H3C_S5024P"
+	H3C_S2126T    = "H3C_S2126T"
+	H3C           = "H3C"
+	Cisco_NX      = "Cisco_NX"
+	Cisco_ASA_OLD = "Cisco_ASA_OLD"
+	Cisco_ASA     = "Cisco_ASA"
+	Cisco_IOS_XE  = "Cisco_IOS_XE"
+	Cisco_IOS_XR  = "Cisco_IOS_XR"
+	Cisco_old     = "Cisco_old"
+	Cisco         = "Cisco"
+	Huawei_ME60   = "Huawei_ME60"
+	Huawei_V5     = "Huawei_V5"
+	Huawei_V3_10  = "Huawei_V3.10"
+	Huawei        = "Huawei"
+	Ruijie        = "Ruijie"
+	Juniper       = "Juniper"
+	Dell          = "Dell"
+	Draytek       = "Draytek"
+	FortiGate     = "FortiGate"
+	Sundray       = "Sundray"
+	Linux         = "Linux"
+	FutureMatrix  = "FutureMatrix"
+)
+
 func SystemName(ip, community string, retry int, timeout int) (name string, err error) {
 	oid := "1.3.6.1.2.1.1.5.0"
 	method := snmpGet
@@ -72,36 +103,36 @@ func SerialNumber(ip, community string, retry int, timeout int) (sn string, err 
 	return
 }
 
-const (
-	H3C_V5        = "H3C_V5"
-	H3C_V7        = "H3C_V7"
-	H3C_S9500     = "H3C_S9500"
-	H3C_S5500     = "H3C_S5500"
-	H3C_V3_1      = "H3C_V3.1"
-	H3C_ER        = "H3C_ER"
-	H3C_S5024P    = "H3C_S5024P"
-	H3C_S2126T    = "H3C_S2126T"
-	H3C           = "H3C"
-	Cisco_NX      = "Cisco_NX"
-	Cisco_ASA_OLD = "Cisco_ASA_OLD"
-	Cisco_ASA     = "Cisco_ASA"
-	Cisco_IOS_XE  = "Cisco_IOS_XE"
-	Cisco_IOS_XR  = "Cisco_IOS_XR"
-	Cisco_old     = "Cisco_old"
-	Cisco         = "Cisco"
-	Huawei_ME60   = "Huawei_ME60"
-	Huawei_V5     = "Huawei_V5"
-	Huawei_V3_10  = "Huawei_V3.10"
-	Huawei        = "Huawei"
-	Ruijie        = "Ruijie"
-	Juniper       = "Juniper"
-	Dell          = "Dell"
-	Draytek       = "Draytek"
-	FortiGate     = "FortiGate"
-	Sundray       = "Sundray"
-	Linux         = "Linux"
-	FutureMatrix  = "FutureMatrix"
-)
+func SoftwareVersion(ip, community string, retry int, timeout int) (software string) {
+	var chSnmpPDUs = make(chan []gosnmp.SnmpPDU)
+	limitCh := make(chan bool, 1)
+	limitCh <- true
+	go RunSnmpRetry(ip, community, timeout, chSnmpPDUs, retry, limitCh, false, []string{"1.3.6.1.2.1.47.1.1.1.1.10", "1.3.6.1.4.1.45577.5.7.7.0"})
+	var s []string
+	snmpPDUs := <-chSnmpPDUs
+	for _, pdu := range snmpPDUs {
+		if pdu.Value != nil && len(string(pdu.Value.([]byte))) > 0 {
+			s = append(s, string(pdu.Value.([]byte)))
+		}
+	}
+	software = strings.Join(RemoveDuplicateElement(s), "  ")
+	return
+}
+
+func ProductClass(ip, community string, retry int, timeout int) (productClass string) {
+	var chSnmpPDUs = make(chan []gosnmp.SnmpPDU)
+	limitCh := make(chan bool, 1)
+	limitCh <- true
+	go RunSnmpRetry(ip, community, timeout, chSnmpPDUs, retry, limitCh, true, []string{"1.3.6.1.2.1.47.1.1.1.1.2", "1.3.6.1.4.1.45577.5.7.8.0"})
+	snmpPDUs := <-chSnmpPDUs
+	for _, pdu := range snmpPDUs {
+		if pdu.Value != nil && len(string(pdu.Value.([]byte))) > 3 {
+			productClass = string(pdu.Value.([]byte))
+			break
+		}
+	}
+	return
+}
 
 func SysVendor(ip, community string, retry int, timeout int) (Version, sysDesc string, err error) {
 	sysDesc, err = SysDescription(ip, community, retry, timeout)
@@ -227,4 +258,16 @@ func SysPatchInfo(ip, community string, retry int, timeout int) (patch string, e
 		}
 	}
 	return
+}
+
+func RemoveDuplicateElement(s []string) []string {
+	result := make([]string, 0, len(s))
+	temp := map[string]struct{}{}
+	for _, item := range s {
+		if _, ok := temp[item]; !ok {
+			temp[item] = struct{}{}
+			result = append(result, item)
+		}
+	}
+	return result
 }

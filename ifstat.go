@@ -12,11 +12,13 @@ import (
 )
 
 var (
-	ifNameOid           = []string{"1.3.6.1.2.1.31.1.1.1.1"}
-	ifNameOidPrefix     = ".1.3.6.1.2.1.31.1.1.1.1."
-	ifHCInOid           = []string{"1.3.6.1.2.1.31.1.1.1.6"}
-	ifHCInOidPrefix     = ".1.3.6.1.2.1.31.1.1.1.6."
-	ifHCOutOid          = []string{"1.3.6.1.2.1.31.1.1.1.10"}
+	ifNameOid        = []string{"1.3.6.1.2.1.31.1.1.1.1"}
+	ifNameOidPrefix  = ".1.3.6.1.2.1.31.1.1.1.1."
+	ifHCInOid        = []string{"1.3.6.1.2.1.31.1.1.1.6"}
+	ifHCInOidPrefix  = ".1.3.6.1.2.1.31.1.1.1.6."
+	ifHCOutOid       = []string{"1.3.6.1.2.1.31.1.1.1.10"}
+	ifHCOutOidPrefix = ".1.3.6.1.2.1.31.1.1.1.10."
+
 	ifHCInPktsOid       = []string{"1.3.6.1.2.1.31.1.1.1.7"}
 	ifHCInPktsOidPrefix = ".1.3.6.1.2.1.31.1.1.1.7."
 	ifHCOutPktsOid      = []string{"1.3.6.1.2.1.31.1.1.1.11"}
@@ -69,6 +71,10 @@ var (
 	//取值范围为0～4094。如果设置为0，则hwL2IfPVID恢复为缺省值1
 	l2IfPvidOid    = []string{"1.3.6.1.4.1.2011.5.25.42.1.1.1.3.1.4", "1.3.6.1.4.1.56813.5.25.42.1.1.1.3.1.4", "1.3.6.1.4.1.4881.1.1.10.2.9.1.6.1.3", "1.3.6.1.4.1.45577.5.7.9.1.6", "1.3.6.1.2.1.17.7.1.4.5.1.1"}
 	l2IfPvidPrefix = []string{".1.3.6.1.4.1.2011.5.25.42.1.1.1.3.1.4.", ".1.3.6.1.4.1.56813.5.25.42.1.1.1.3.1.4.", ".1.3.6.1.4.1.4881.1.1.10.2.9.1.6.1.3.", ".1.3.6.1.4.1.45577.5.7.9.1.6.", ".1.3.6.1.2.1.17.7.1.4.5.1.1."}
+
+	//trunk放行的VLAN  信锐有这个属性
+	l2IfVlanUntaggedOid = []string{".1.3.6.1.4.1.45577.5.7.9.1.4"}
+
 	//二层端口的模式
 	//INTEGER : copper(1)2: fiber(2)3: other(3)
 	ethernetPortModeOid    = []string{"1.3.6.1.4.1.2011.5.25.157.1.1.1.1.39", "1.3.6.1.4.1.56813.5.25.157.1.1.1.1.39", "1.3.6.1.4.1.4881.1.1.10.2.10.1.1.1.15"}
@@ -147,6 +153,7 @@ func (this *IfStats) String() string {
 }
 
 type IgnoreIfStats struct {
+	IgnoreInOutOctets,
 	IgnorePkt,
 	IgnoreOperStatus,
 	IgnoreBroadcastPkt,
@@ -160,8 +167,9 @@ type IgnoreIfStats struct {
 	IgnoreEthernetPortMode,
 	IgnoreEthernetDuplex,
 	IgnoreIfAdminStatus,
-	IgnoreIfDescr,
-	IgnoreStpStatus bool
+	IgnoreIfDesc,
+	IgnoreStpStatus,
+	IgnoreIfSpeed bool
 }
 
 func ListIfStats(ip, community string, timeout int, interfaces []string, retry int, limitConn int, manufacturer string, useSnmpGetNext bool, ignoreIfStats IgnoreIfStats) ([]IfStats, error) {
@@ -172,28 +180,35 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 	} else {
 		limitCh = make(chan bool, 1)
 	}
-	var sleep = 1 * time.Millisecond
+	var sleep = 5 * time.Millisecond
 	if useSnmpGetNext {
 		sleep = 700 * time.Millisecond
 	}
-	chIfInList := make(chan []gosnmp.SnmpPDU)
-	chIfOutList := make(chan []gosnmp.SnmpPDU)
 
 	chIfNameList := make(chan []gosnmp.SnmpPDU)
-	chIfSpeedList := make(chan []gosnmp.SnmpPDU)
-
-	limitCh <- true
-	go ListIfHCInOctets(ip, community, timeout, chIfInList, retry, limitCh, useSnmpGetNext)
-	time.Sleep(sleep)
-	limitCh <- true
-	go ListIfHCOutOctets(ip, community, timeout, chIfOutList, retry, limitCh, useSnmpGetNext)
-	time.Sleep(sleep)
 	limitCh <- true
 	go ListIfName(ip, community, timeout, chIfNameList, retry, limitCh, useSnmpGetNext)
-	time.Sleep(sleep)
-	limitCh <- true
-	go ListIfSpeed(ip, community, timeout, chIfSpeedList, retry, limitCh, useSnmpGetNext)
-	time.Sleep(sleep)
+
+	var ifInList, ifOutList, ifSpeedList []gosnmp.SnmpPDU
+	chIfInList := make(chan []gosnmp.SnmpPDU)
+	chIfOutList := make(chan []gosnmp.SnmpPDU)
+	chIfSpeedList := make(chan []gosnmp.SnmpPDU)
+
+	if ignoreIfStats.IgnoreInOutOctets == false {
+		limitCh <- true
+		go ListIfHCInOctets(ip, community, timeout, chIfInList, retry, limitCh, useSnmpGetNext)
+		time.Sleep(sleep)
+		limitCh <- true
+		go ListIfHCOutOctets(ip, community, timeout, chIfOutList, retry, limitCh, useSnmpGetNext)
+		time.Sleep(sleep)
+	}
+
+	//Speed
+	if ignoreIfStats.IgnoreIfSpeed == false {
+		limitCh <- true
+		go ListIfSpeed(ip, community, timeout, chIfSpeedList, retry, limitCh, useSnmpGetNext)
+		time.Sleep(sleep)
+	}
 
 	// OperStatus
 	var ifStatusList []gosnmp.SnmpPDU
@@ -221,6 +236,7 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 		go ListL2IfPVlanId(ip, community, timeout, chL2IfPVIDList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
 	}
+
 	//ethernetPortModeOid
 	var ethernetPortModeList []gosnmp.SnmpPDU
 	chEthernetPortModeList := make(chan []gosnmp.SnmpPDU)
@@ -229,6 +245,7 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 		go ListEthernetPortMode(ip, community, timeout, chEthernetPortModeList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
 	}
+
 	//EthernetDuplex
 	var ethernetDuplexList []gosnmp.SnmpPDU
 	chEthernetDuplexList := make(chan []gosnmp.SnmpPDU)
@@ -246,10 +263,11 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 		go ListIfAdminStatus(ip, community, timeout, chIfAdminStatusList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
 	}
+
 	//IfDescr
 	var ifDescrList []gosnmp.SnmpPDU
 	chIfDescrList := make(chan []gosnmp.SnmpPDU)
-	if ignoreIfStats.IgnoreIfDescr == false {
+	if ignoreIfStats.IgnoreIfDesc == false {
 		limitCh <- true
 		go ListIfDescr(ip, community, timeout, chIfDescrList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
@@ -261,15 +279,15 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 	if ignoreIfStats.IgnoreStpStatus == false {
 		limitCh <- true
 		go ListIfStpStatus(ip, community, timeout, chIfStpStatusList, retry, limitCh, useSnmpGetNext)
+		time.Sleep(sleep)
 		limitCh <- true
 		go ListIfStpEnabled(ip, community, timeout, chIfStpEnabledList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
 	}
 
+	var ifInPktList, ifOutPktList []gosnmp.SnmpPDU
 	chIfInPktList := make(chan []gosnmp.SnmpPDU)
 	chIfOutPktList := make(chan []gosnmp.SnmpPDU)
-	var ifInPktList, ifOutPktList []gosnmp.SnmpPDU
-
 	if ignoreIfStats.IgnorePkt == false {
 		limitCh <- true
 		go ListIfHCInUcastPkts(ip, community, timeout, chIfInPktList, retry, limitCh, useSnmpGetNext)
@@ -277,14 +295,11 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 		limitCh <- true
 		go ListIfHCOutUcastPkts(ip, community, timeout, chIfOutPktList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
-
 	}
 
+	var ifInBroadcastPktList, ifOutBroadcastPktList []gosnmp.SnmpPDU
 	chIfInBroadcastPktList := make(chan []gosnmp.SnmpPDU)
 	chIfOutBroadcastPktList := make(chan []gosnmp.SnmpPDU)
-
-	var ifInBroadcastPktList, ifOutBroadcastPktList []gosnmp.SnmpPDU
-
 	if ignoreIfStats.IgnoreBroadcastPkt == false {
 		limitCh <- true
 		go ListIfHCInBroadcastPkts(ip, community, timeout, chIfInBroadcastPktList, retry, limitCh, useSnmpGetNext)
@@ -292,14 +307,11 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 		limitCh <- true
 		go ListIfHCOutBroadcastPkts(ip, community, timeout, chIfOutBroadcastPktList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
-
 	}
 
+	var ifInMulticastPktList, ifOutMulticastPktList []gosnmp.SnmpPDU
 	chIfInMulticastPktList := make(chan []gosnmp.SnmpPDU)
 	chIfOutMulticastPktList := make(chan []gosnmp.SnmpPDU)
-
-	var ifInMulticastPktList, ifOutMulticastPktList []gosnmp.SnmpPDU
-
 	if ignoreIfStats.IgnoreMulticastPkt == false {
 		limitCh <- true
 		go ListIfHCInMulticastPkts(ip, community, timeout, chIfInMulticastPktList, retry, limitCh, useSnmpGetNext)
@@ -307,15 +319,12 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 		limitCh <- true
 		go ListIfHCOutMulticastPkts(ip, community, timeout, chIfOutMulticastPktList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
-
 	}
 
 	//Discards
+	var ifInDiscardsList, ifOutDiscardsList []gosnmp.SnmpPDU
 	chIfInDiscardsList := make(chan []gosnmp.SnmpPDU)
 	chIfOutDiscardsList := make(chan []gosnmp.SnmpPDU)
-
-	var ifInDiscardsList, ifOutDiscardsList []gosnmp.SnmpPDU
-
 	if ignoreIfStats.IgnoreDiscards == false {
 		limitCh <- true
 		go ListIfInDiscards(ip, community, timeout, chIfInDiscardsList, retry, limitCh, useSnmpGetNext)
@@ -323,15 +332,12 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 		limitCh <- true
 		go ListIfOutDiscards(ip, community, timeout, chIfOutDiscardsList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
-
 	}
 
 	//Errors
+	var ifInErrorsList, ifOutErrorsList []gosnmp.SnmpPDU
 	chIfInErrorsList := make(chan []gosnmp.SnmpPDU)
 	chIfOutErrorsList := make(chan []gosnmp.SnmpPDU)
-
-	var ifInErrorsList, ifOutErrorsList []gosnmp.SnmpPDU
-
 	if ignoreIfStats.IgnoreErrors == false {
 		limitCh <- true
 		go ListIfInErrors(ip, community, timeout, chIfInErrorsList, retry, limitCh, useSnmpGetNext)
@@ -339,35 +345,36 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 		limitCh <- true
 		go ListIfOutErrors(ip, community, timeout, chIfOutErrorsList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
-
 	}
 
 	//UnknownProtos
-	chIfInUnknownProtosList := make(chan []gosnmp.SnmpPDU)
-
 	var ifInUnknownProtosList []gosnmp.SnmpPDU
-
+	chIfInUnknownProtosList := make(chan []gosnmp.SnmpPDU)
 	if ignoreIfStats.IgnoreUnknownProtos == false {
 		limitCh <- true
 		go ListIfInUnknownProtos(ip, community, timeout, chIfInUnknownProtosList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
-
 	}
+
 	//QLen
-	chIfOutQLenList := make(chan []gosnmp.SnmpPDU)
-
 	var ifOutQLenList []gosnmp.SnmpPDU
-
+	chIfOutQLenList := make(chan []gosnmp.SnmpPDU)
 	if ignoreIfStats.IgnoreOutQLen == false {
 		limitCh <- true
 		go ListIfOutQLen(ip, community, timeout, chIfOutQLenList, retry, limitCh, useSnmpGetNext)
 		time.Sleep(sleep)
-
 	}
-	ifInList := <-chIfInList
-	ifOutList := <-chIfOutList
+
+	//开始取出数据
 	ifNameList := <-chIfNameList
-	ifSpeedList := <-chIfSpeedList
+
+	if ignoreIfStats.IgnoreInOutOctets == false {
+		ifInList = <-chIfInList
+		ifOutList = <-chIfOutList
+	}
+	if ignoreIfStats.IgnoreIfSpeed == false {
+		ifSpeedList = <-chIfSpeedList
+	}
 	if ignoreIfStats.IgnoreOperStatus == false {
 		ifStatusList = <-chIfStatusList
 	}
@@ -390,7 +397,7 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 		ifInPktList = <-chIfInPktList
 		ifOutPktList = <-chIfOutPktList
 	}
-	if ignoreIfStats.IgnoreIfDescr == false {
+	if ignoreIfStats.IgnoreIfDesc == false {
 		ifDescrList = <-chIfDescrList
 	}
 	if ignoreIfStats.IgnoreBroadcastPkt == false {
@@ -415,14 +422,12 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 	if ignoreIfStats.IgnoreOutQLen == false {
 		ifOutQLenList = <-chIfOutQLenList
 	}
-
 	if ignoreIfStats.IgnoreStpStatus == false {
 		ifStpStatusList = <-chIfStpStatusList
 		ifStpEnabledList = <-chIfStpEnabledList
 	}
-	var ifCount int
 
-	if len(ifNameList) > 0 && len(ifInList) > 0 && len(ifOutList) > 0 {
+	if len(ifNameList) > 0 {
 		now := time.Now().Unix()
 		for _, ifNamePDU := range ifNameList {
 			ifName := string(ifNamePDU.Value.([]byte))
@@ -433,7 +438,6 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 					//以包含的接口名开头
 					if strings.HasPrefix(strings.ToLower(ifName), strings.ToLower(inter)) {
 						check = true
-						ifCount++
 						break
 					}
 				}
@@ -443,15 +447,21 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 				var ifStats IfStats
 				ifStats.TS = now
 				ifStats.IfName = ifName
-
 				ifIndexStr := strings.Replace(ifNamePDU.Name, ifNameOidPrefix, "", 1)
 				ifStats.IfIndex, _ = strconv.Atoi(ifIndexStr)
 
-				for ti, ifHCInOctetsPDU := range ifInList {
-					if strings.Replace(ifHCInOctetsPDU.Name, ifHCInOidPrefix, "", 1) == ifIndexStr {
-						ifStats.IfHCInOctets = gosnmp.ToBigInt(ifInList[ti].Value).Uint64()
-						ifStats.IfHCOutOctets = gosnmp.ToBigInt(ifOutList[ti].Value).Uint64()
-						break
+				if ignoreIfStats.IgnoreInOutOctets == false && len(ifInList) > 0 && len(ifOutList) > 0 {
+					for ti, ifHCInOctetsPDU := range ifInList {
+						if strings.Replace(ifHCInOctetsPDU.Name, ifHCInOidPrefix, "", 1) == ifIndexStr {
+							ifStats.IfHCInOctets = gosnmp.ToBigInt(ifInList[ti].Value).Uint64()
+							break
+						}
+					}
+					for ti, ifHCOutOctetsPDU := range ifOutList {
+						if strings.Replace(ifHCOutOctetsPDU.Name, ifHCOutOidPrefix, "", 1) == ifIndexStr {
+							ifStats.IfHCOutOctets = gosnmp.ToBigInt(ifOutList[ti].Value).Uint64()
+							break
+						}
 					}
 				}
 				if ignoreIfStats.IgnorePkt == false {
@@ -516,18 +526,6 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 					}
 				}
 
-				//if ignoreIfStats.IgnoreL2IfPortType == false {
-				//	for ti, l2IfPortTypePDU := range l2IfPortTypeList {
-				//		for _, oidPrefix := range l2IfPortTypeOidPrefix {
-				//			if strings.Replace(l2IfPortTypePDU.Name, oidPrefix, "", 1) == ifIndexStr {
-				//				ifStats.L2IfPortType = gosnmp.ToBigInt(l2IfPortTypeList[ti].Value).Uint64()
-				//				break
-				//			}
-				//
-				//		}
-				//	}
-				//}
-
 				if ignoreIfStats.IgnoreL2IfPVID == false {
 					for ti, l2IfPvidPDU := range l2IfPVIDList {
 						for _, oidPrefix := range l2IfPvidPrefix {
@@ -549,11 +547,13 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 						}
 					}
 
-					for ti, ifStpEnabledPDU := range ifStpEnabledList {
-						for _, oidPrefix := range dot1dStpPortEnabledPrefix {
-							if strings.Replace(ifStpEnabledPDU.Name, oidPrefix, "", 1) == ifIndexStr {
-								ifStats.StpEnabled = gosnmp.ToBigInt(ifStpEnabledList[ti].Value).Uint64()
-								break
+					if ignoreIfStats.IgnoreStpStatus == false {
+						for ti, ifStpEnabledPDU := range ifStpEnabledList {
+							for _, oidPrefix := range dot1dStpPortEnabledPrefix {
+								if strings.Replace(ifStpEnabledPDU.Name, oidPrefix, "", 1) == ifIndexStr {
+									ifStats.StpEnabled = gosnmp.ToBigInt(ifStpEnabledList[ti].Value).Uint64()
+									break
+								}
 							}
 						}
 					}
@@ -590,7 +590,7 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 					}
 				}
 
-				if ignoreIfStats.IgnoreIfDescr == false {
+				if ignoreIfStats.IgnoreIfDesc == false {
 					for ti, ifDescrPDU := range ifDescrList {
 						if strings.Replace(ifDescrPDU.Name, ifDescrPrefix, "", 1) == ifIndexStr {
 							ifStats.IfDescr = string(ifDescrList[ti].Value.([]byte))
@@ -616,14 +616,14 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 						}
 					}
 				}
-
-				for ti, ifSpeedPDU := range ifSpeedList {
-					if strings.Replace(ifSpeedPDU.Name, ifSpeedOidPrefix, "", 1) == ifIndexStr {
-						ifStats.IfSpeed = 1000 * 1000 * gosnmp.ToBigInt(ifSpeedList[ti].Value).Uint64()
-						break
+				if ignoreIfStats.IgnoreIfSpeed == false {
+					for ti, ifSpeedPDU := range ifSpeedList {
+						if strings.Replace(ifSpeedPDU.Name, ifSpeedOidPrefix, "", 1) == ifIndexStr {
+							ifStats.IfSpeed = 1000 * 1000 * gosnmp.ToBigInt(ifSpeedList[ti].Value).Uint64()
+							break
+						}
 					}
 				}
-
 				ifStatsList = append(ifStatsList, ifStats)
 			}
 		}
@@ -727,16 +727,20 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 		}
 
 		//信锐交换机的处理
-		if strings.Contains(manufacturer, Sundray) {
+		if manufacturer == Sundray {
 			chIfNameList_ := make(chan []gosnmp.SnmpPDU)
+			chIfVlanUntaggedList := make(chan []gosnmp.SnmpPDU)
 			limitCh <- true
 			go RunSnmpRetry(ip, community, timeout, chIfNameList_, retry, limitCh, useSnmpGetNext, l2IfName)
+			limitCh <- true
+			go RunSnmpRetry(ip, community, timeout, chIfVlanUntaggedList, retry, limitCh, useSnmpGetNext, l2IfVlanUntaggedOid)
 			ifNameList_ := <-chIfNameList_
+			ifVlanUntaggedList := <-chIfVlanUntaggedList
 			if len(ifNameList_) > 0 {
 				var ifNamePortTypeMap = make(map[string]uint64)
 				var ifNamePVIDMap = make(map[string]uint64)
+				var ifVlanUntaggedMap = make(map[string]string)
 				for i, snmpPDU := range ifNameList_ {
-					//信锐的处理
 					ifName := string(snmpPDU.Value.([]byte))
 					if t, ok := l2IfPortTypeList[i].Value.([]byte); ok {
 						switch string(t) {
@@ -750,107 +754,17 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 					} else {
 						ifNamePortTypeMap[ifName] = gosnmp.ToBigInt(l2IfPortTypeList[i].Value).Uint64()
 					}
-
 					ifNamePVIDMap[ifName] = gosnmp.ToBigInt(l2IfPVIDList[i].Value).Uint64()
+					ifVlanUntaggedMap[ifName] = string(ifVlanUntaggedList[i].Value.([]byte))
 				}
+
 				for i, stats := range ifStatsList {
 					ifStatsList[i].L2IfPortType = ifNamePortTypeMap[stats.IfName]
 					ifStatsList[i].L2IfPVID = ifNamePVIDMap[stats.IfName]
+					ifStatsList[i].L2IfTrunkAllowedVlan = ifVlanUntaggedMap[stats.IfName]
 				}
 			}
 		}
-
-		//chIfNameList_ := make(chan []gosnmp.SnmpPDU)
-		//limitCh <- true
-		//go ListIfName_(ip, community, timeout, chIfNameList_, retry, limitCh, useSnmpGetNext)
-		//ifNameList_ := <-chIfNameList_
-		//
-		//var ifNamePortTypeMap = make(map[string]uint64)
-		//var ifNamePVIDMap = make(map[string]uint64)
-		//if len(ifNameList_) == 0 {
-		//	if len(l2IfPVIDList) > 0 && len(l2IfPortTypeList) > 0 {
-		//		ifNameList_ = ifNameList
-		//		for _, pdu := range l2IfPortTypeList {
-		//			start := strings.LastIndex(pdu.Name, ".")
-		//			ifNamePortTypeMap[pdu.Name[start+1:]] = gosnmp.ToBigInt(pdu.Value).Uint64()
-		//		}
-		//		for _, pdu := range l2IfPVIDList {
-		//			start := strings.LastIndex(pdu.Name, ".")
-		//			ifNamePVIDMap[pdu.Name[start+1:]] = gosnmp.ToBigInt(pdu.Value).Uint64()
-		//		}
-		//		for i, stats := range ifStatsList {
-		//			pt, ok1 := ifNamePortTypeMap[fmt.Sprintf("%d", stats.IfIndex)]
-		//			if ok1 {
-		//				ifStatsList[i].L2IfPortType = pt
-		//			}
-		//			pvid, ok2 := ifNamePVIDMap[fmt.Sprintf("%d", stats.IfIndex)]
-		//			if ok2 {
-		//				ifStatsList[i].L2IfPVID = pvid
-		//			}
-		//		}
-		//		//	新华三的处理
-		//	} else if len(l2IfPVIDList) == 0 {
-		//		limitCh <- true
-		//		chIfVlanPortList := make(chan []gosnmp.SnmpPDU)
-		//		go ListIfVlanPortList(ip, community, timeout, chIfVlanPortList, retry, limitCh, useSnmpGetNext)
-		//		ifVlanPortList := <-chIfVlanPortList
-		//		if len(ifVlanPortList) > 0 {
-		//			var ifPortVlanMap = make(map[string][]string)
-		//			for _, pdu := range ifVlanPortList {
-		//				start := strings.LastIndex(pdu.Name, ".")
-		//				vlanId := pdu.Name[start+1:]
-		//				for _, port := range strings.Split(string(pdu.Value.([]byte)), ",") {
-		//					if port != "" {
-		//						ifPortVlanMap[port] = append(ifPortVlanMap[port], vlanId)
-		//					}
-		//				}
-		//			}
-		//			for i, stats := range ifStatsList {
-		//				if vlanIds, ok := ifPortVlanMap[fmt.Sprintf("%d", stats.IfIndex)]; ok {
-		//					if len(vlanIds) > 0 {
-		//						if len(vlanIds) == 1 && vlanIds[0] == "1" {
-		//							ifStatsList[i].L2IfPortType = 3 //hybrid
-		//							ifStatsList[i].L2IfTrunkAllowedVlan = "1-4094"
-		//							ifStatsList[i].L2IfPVID = 1
-		//						} else if len(vlanIds) == 1 && vlanIds[0] != "1" {
-		//							ifStatsList[i].L2IfPortType = 2 //access
-		//							ifStatsList[i].L2IfPVID = cast.ToUint64(vlanIds[0])
-		//						} else {
-		//							ifStatsList[i].L2IfPortType = 1 //trunk
-		//							ifStatsList[i].L2IfPVID = 1
-		//							ifStatsList[i].L2IfTrunkAllowedVlan = strings.Join(vlanIds, ",")
-		//						}
-		//
-		//					}
-		//				}
-		//			}
-		//		}
-		//	}
-		//} else {
-		//	for i, snmpPDU := range ifNameList_ {
-		//		//信锐的处理
-		//		ifName := string(snmpPDU.Value.([]byte))
-		//		if t, ok := l2IfPortTypeList[i].Value.([]byte); ok {
-		//			switch string(t) {
-		//			case "access":
-		//				ifNamePortTypeMap[ifName] = 2
-		//			case "trunk":
-		//				ifNamePortTypeMap[ifName] = 1
-		//			case "hybrid":
-		//				ifNamePortTypeMap[ifName] = 3
-		//			}
-		//		} else {
-		//			ifNamePortTypeMap[ifName] = gosnmp.ToBigInt(l2IfPortTypeList[i].Value).Uint64()
-		//		}
-		//
-		//		ifNamePVIDMap[ifName] = gosnmp.ToBigInt(l2IfPVIDList[i].Value).Uint64()
-		//	}
-		//	for i, stats := range ifStatsList {
-		//		ifStatsList[i].L2IfPortType = ifNamePortTypeMap[stats.IfName]
-		//		ifStatsList[i].L2IfPVID = ifNamePVIDMap[stats.IfName]
-		//	}
-		//}
-
 	}
 	return ifStatsList, nil
 }
@@ -861,10 +775,6 @@ func ListIfOperStatus(ip, community string, timeout int, ch chan []gosnmp.SnmpPD
 
 func ListIfName(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
 	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, ifNameOid)
-}
-
-func ListIfName_(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
-	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, l2IfName)
 }
 
 func ListIfHCInOctets(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
@@ -935,6 +845,10 @@ func ListL2IfPVlanId(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU
 	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, l2IfPvidOid)
 }
 
+func ListL2IfVlanUntagged(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
+	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, l2IfVlanUntaggedOid)
+}
+
 func ListEthernetPortMode(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, retry int, limitCh chan bool, useSnmpGetNext bool) {
 	RunSnmpRetry(ip, community, timeout, ch, retry, limitCh, useSnmpGetNext, ethernetPortModeOid)
 }
@@ -969,6 +883,7 @@ func RunSnmpRetry(ip, community string, timeout int, ch chan []gosnmp.SnmpPDU, r
 			snmpPDUs, err = RunSnmpBulkWalk(ip, community, oid, retry, timeout)
 		}
 		if len(snmpPDUs) > 0 {
+			err = nil
 			break
 		}
 	}
