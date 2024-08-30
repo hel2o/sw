@@ -25,15 +25,13 @@ func Temperature(ip, community string, timeout, retry int) (uint64, error) {
 
 	var oid string
 	switch vendor {
-	case Huawei_V5:
+	case Huawei_V5, Huawei_V5_70, Huawei_V5_130, Huawei_V5_150, Huawei_V5_170:
 		oid = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.11"
 	case FutureMatrix:
 		oid = "1.3.6.1.4.1.56813.5.25.31.1.1.1.1.11"
 	case Ruijie:
 		oid = "1.3.6.1.4.1.4881.1.1.10.2.1.1.16.0"
-	case H3C_V7:
-		oid = "1.3.6.1.4.1.25506.2.6.1.1.1.1.12.212"
-	case H3C_V5:
+	case H3C_V5, H3C_V7:
 		oid = "1.3.6.1.4.1.25506.2.6.1.1.1.1.12"
 	case H3C_S5500, H3C_V3_1:
 		oid = "1.3.6.1.4.1.2011.10.2.6.1.1.1.1.12"

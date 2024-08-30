@@ -26,9 +26,15 @@ const (
 	Cisco         = "Cisco"
 	Huawei_ME60   = "Huawei_ME60"
 	Huawei_V5     = "Huawei_V5"
+	Huawei_V5_170 = "Huawei_V5.170" //S5720 S7700 S5730 S5735
+	Huawei_V5_150 = "Huawei_V5.150" //S5700 V200R005C10SPC50
+	Huawei_V5_130 = "Huawei_V5.130" //S5700 V200R003C10SPC00
+	Huawei_V5_70  = "Huawei_V5.70"  //S2326 S2700
 	Huawei_V3_10  = "Huawei_V3.10"
 	Huawei        = "Huawei"
 	Ruijie        = "Ruijie"
+	Ruijie_S1900  = "Ruijie_S1900"
+	Ruijie_S5700  = "Ruijie_S5700"
 	Juniper       = "Juniper"
 	Dell          = "Dell"
 	Draytek       = "Draytek"
@@ -134,104 +140,154 @@ func ProductClass(ip, community string, retry int, timeout int) (productClass st
 	return
 }
 
-func SysVendor(ip, community string, retry int, timeout int) (Version, sysDesc string, err error) {
+func SysVendor(ip, community string, retry int, timeout int) (version string, sysDesc string, err error) {
 	sysDesc, err = SysDescription(ip, community, retry, timeout)
+	if err != nil {
+		return
+	}
+	version, err = VersionDetect(sysDesc)
+	return
+}
+
+func VersionDetect(sysDesc string) (version string, err error) {
 	sysDescLower := strings.ToLower(sysDesc)
-
 	if strings.Contains(sysDescLower, "cisco nx-os") {
-		return Cisco_NX, sysDesc, err
+		version = Cisco_NX
+		return
 	}
-
 	if strings.Contains(sysDesc, "Cisco Internetwork Operating System Software") {
-		return Cisco_old, sysDesc, err
+		version = Cisco_old
+		return
 	}
-
 	if strings.Contains(sysDescLower, "cisco ios") {
 		if strings.Contains(sysDesc, "IOS-XE Software") {
-			return Cisco_IOS_XE, sysDesc, err
+			version = Cisco_IOS_XE
+			return
 		} else if strings.Contains(sysDesc, "Cisco IOS XR") {
-			return Cisco_IOS_XR, sysDesc, err
+			version = Cisco_IOS_XR
+			return
 		} else {
-			return Cisco, sysDesc, err
+			version = Cisco
+			return
 		}
 	}
-
 	if strings.Contains(sysDescLower, "cisco adaptive security appliance") {
 		var versionNumber float64
 		versionNumber, err = strconv.ParseFloat(getVersionNumber(sysDesc), 32)
 		if err == nil && versionNumber < 9.2 {
-			return Cisco_ASA_OLD, sysDesc, err
+			version = Cisco_ASA_OLD
+			return
 		}
-		return Cisco_ASA, sysDesc, err
+		version = Cisco_ASA
+		return
 	}
 	if strings.Contains(sysDescLower, "h3c") {
 		if strings.Contains(sysDesc, "Software Version 5") {
-			return H3C_V5, sysDesc, err
+			version = H3C_V5
+			return
 		}
 		if strings.Contains(sysDesc, "Software Version 7") {
-			return H3C_V7, sysDesc, err
+			version = H3C_V7
+			return
 		}
 		if strings.Contains(sysDesc, "S5500-SI") {
-			return H3C_S5500, sysDesc, err
+			version = H3C_S5500
+			return
 		}
 		if strings.Contains(sysDesc, "Version S9500") {
-			return H3C_S9500, sysDesc, err
+			version = H3C_S9500
+			return
 		}
 		if strings.Contains(sysDesc, "Version 3.1") {
-			return H3C_V3_1, sysDesc, err
+			version = H3C_V3_1
+			return
 		}
 		if strings.Contains(sysDesc, "Version ER") {
-			return H3C_ER, sysDesc, err
+			version = H3C_ER
+			return
 		}
 		if strings.Contains(sysDesc, "S5024P") {
-			return H3C_S5024P, sysDesc, err
+			version = H3C_S5024P
+			return
 		}
 		if strings.Contains(sysDesc, "S2126T") {
-			return H3C_S2126T, sysDesc, err
+			version = H3C_S2126T
+			return
 		}
-		return H3C, sysDesc, err
+		version = H3C
+		return
 	}
 	if strings.Contains(sysDescLower, "futurematrix") {
-		return FutureMatrix, sysDesc, err
+		version = FutureMatrix
+		return
 	}
 	if strings.Contains(sysDescLower, "huawei") {
-		if strings.Contains(sysDesc, "MultiserviceEngine 60") {
-			return Huawei_ME60, sysDesc, err
-		}
 		if strings.Contains(sysDesc, "Version 5.") {
-			return Huawei_V5, sysDesc, err
+			if strings.Contains(sysDesc, "Version 5.170") {
+				version = Huawei_V5_170
+				return
+			}
+			if strings.Contains(sysDesc, "Version 5.150") {
+				version = Huawei_V5_150
+				return
+			}
+			if strings.Contains(sysDesc, "Version 5.130") {
+				version = Huawei_V5_130
+				return
+			}
+			if strings.Contains(sysDesc, "Version 5.70") {
+				version = Huawei_V5_70
+				return
+			}
+			version = Huawei_V5
+			return
 		}
 		if strings.Contains(sysDesc, "Version 3.10") {
-			return Huawei_V3_10, sysDesc, err
+			version = Huawei_V3_10
+			return
 		}
-		return Huawei, sysDesc, err
+		version = Huawei
+		return
 	}
-
 	if strings.Contains(sysDescLower, "ruijie") {
-		return Ruijie, sysDesc, err
+		if strings.Contains(sysDesc, "S57") {
+			version = Ruijie_S5700
+			return
+		}
+		if strings.Contains(sysDesc, "S19") {
+			version = Ruijie_S1900
+			return
+		}
+		version = Ruijie
+		return
 	}
-
 	if strings.Contains(sysDescLower, "juniper networks") {
-		return Juniper, sysDesc, err
+		version = Juniper
+		return
 	}
-
 	if strings.Contains(sysDescLower, "dell networking") {
-		return Dell, sysDesc, err
+		version = Dell
+		return
 	}
 	if strings.Contains(sysDescLower, "draytek") {
-		return Draytek, sysDesc, err
+		version = Draytek
+		return
 	}
 	if strings.Contains(sysDescLower, "fortigate") {
-		return FortiGate, sysDesc, err
+		version = FortiGate
+		return
 	}
 	if strings.Contains(sysDescLower, "linux") {
 		if strings.Contains(sysDescLower, "armv7l") {
-			return Sundray, sysDesc, err
+			version = Sundray
+			return
 		}
-		return Linux, sysDesc, err
+		version = Linux
+		return
 	}
 
-	return "", sysDesc, err
+	err = fmt.Errorf("unknown vendor")
+	return
 }
 
 func getVersionNumber(sysdescr string) string {

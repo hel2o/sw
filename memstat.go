@@ -60,7 +60,7 @@ func MemUtilization(ip, community string, timeout, retry int) (uint64, error) {
 	case FutureMatrix:
 		oid = "1.3.6.1.4.1.56813.5.25.31.1.1.1.1.7"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
-	case Huawei, Huawei_V5:
+	case Huawei, Huawei_V5, Huawei_V5_70, Huawei_V5_130, Huawei_V5_150, Huawei_V5_170:
 		oid = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.7"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case Huawei_V3_10:

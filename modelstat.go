@@ -23,22 +23,22 @@ func SysModel(ip, community string, retry int, timeout int) (model string, err e
 
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println("Recovered in sw.modelstat.go SysModel", r)
+			log.Println("Recovered in SysModel", r)
 		}
 	}()
 
 	switch vendor {
-	case "Cisco_NX", "Cisco", "Cisco_old", "Cisco_IOS_XR", "Cisco_IOS_XE", "Ruijie":
-		method = "bulkWalk"
+	case Cisco_NX, Cisco, Cisco_old, Cisco_IOS_XE, Cisco_IOS_XR, Ruijie:
+		method = snmpBulkWalk
 		oid = "1.3.6.1.2.1.47.1.1.1.1.13"
-	case "Huawei_ME60", "Huawei_V5", "Huawei_V3.10":
+	case Huawei_ME60, Huawei_V5, Huawei_V3_10, Huawei_V5_150, Huawei_V5_130, Huawei_V5_70:
 		method = "bulkWalk"
 		oid = "1.3.6.1.2.1.47.1.1.1.1.2"
-	case "H3C_V3.1", "H3C_S9500", "H3C", "H3C_V5", "H3C_V7", "Cisco_ASA":
+	case H3C_V3_1, H3C_S9500, H3C, H3C_V5, H3C_V7, Cisco_ASA:
 		oid = "1.3.6.1.2.1.47.1.1.1.1.13"
-		return getSwmodle(ip, community, oid, timeout, retry)
-	case "Linux":
-		return "Linux", nil
+		return getModule(ip, community, oid, timeout, retry)
+	case Linux:
+		return Linux, nil
 	default:
 		return "", err
 	}
@@ -54,13 +54,13 @@ func SysModel(ip, community string, retry int, timeout int) (model string, err e
 
 }
 
-func getSwmodle(ip, community, oid string, timeout, retry int) (value string, err error) {
+func getModule(ip, community, oid string, timeout, retry int) (value string, err error) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println(ip+" Recovered in getSwmodle", r)
+			log.Println(ip+" Recovered in getModule", r)
 		}
 	}()
-	method := "bulkWalk"
+	method := snmpBulkWalk
 	var snmpPDUs []gosnmp.SnmpPDU
 	snmpPDUs, err = RunSnmp(ip, community, oid, method, retry, timeout)
 	for _, pdu := range snmpPDUs {

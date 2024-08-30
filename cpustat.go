@@ -7,6 +7,7 @@ import (
 	"sync"
 )
 
+// VendorMap 全局记录设备型号的map
 var (
 	VendorMap sync.Map
 )
@@ -39,7 +40,7 @@ func CpuUtilization(ip, community string, timeout, retry int) (uint64, error) {
 		oid = "1.3.6.1.4.1.9.9.109.1.1.1.1.7.1"
 	case Cisco_IOS_XE, Cisco_IOS_XR:
 		oid = "1.3.6.1.4.1.9.9.109.1.1.1.1.7"
-		method = "bulkWalk"
+		method = snmpBulkWalk
 	case Cisco_ASA:
 		oid = "1.3.6.1.4.1.9.9.109.1.1.1.1.7"
 		return getCiscoASAcpu(ip, community, oid, timeout, retry)
@@ -49,7 +50,7 @@ func CpuUtilization(ip, community string, timeout, retry int) (uint64, error) {
 	case FutureMatrix:
 		oid = "1.3.6.1.4.1.56813.6.3.4.1.3"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
-	case Huawei, Huawei_V5:
+	case Huawei, Huawei_V5, Huawei_V5_70, Huawei_V5_130, Huawei_V5_150, Huawei_V5_170:
 		oid = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.5"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case Huawei_V3_10, H3C_V3_1:
