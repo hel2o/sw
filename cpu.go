@@ -4,12 +4,6 @@ import (
 	"errors"
 	"github.com/gosnmp/gosnmp"
 	"log"
-	"sync"
-)
-
-// VendorMap 全局记录设备型号的map
-var (
-	VendorMap sync.Map
 )
 
 func CpuUtilization(ip, community string, timeout, retry int) (uint64, error) {

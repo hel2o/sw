@@ -5,6 +5,12 @@ import (
 	"github.com/gosnmp/gosnmp"
 	"strconv"
 	"strings"
+	"sync"
+)
+
+// VendorMap 全局记录设备型号的map
+var (
+	VendorMap sync.Map
 )
 
 const (
