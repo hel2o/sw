@@ -44,7 +44,7 @@ func CpuUtilization(ip, community string, timeout, retry int) (uint64, error) {
 	case FutureMatrix:
 		oid = "1.3.6.1.4.1.56813.6.3.4.1.3"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
-	case Huawei, Huawei_V5, Huawei_V5_70, Huawei_V5_130, Huawei_V5_150, Huawei_V5_170:
+	case Huawei_YunShan, Huawei, Huawei_V5, Huawei_V5_70, Huawei_V5_130, Huawei_V5_150, Huawei_V5_170:
 		oid = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.5"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case Huawei_V3_10, H3C_V3_1:
@@ -65,7 +65,7 @@ func CpuUtilization(ip, community string, timeout, retry int) (uint64, error) {
 	case Juniper:
 		oid = "1.3.6.1.4.1.2636.3.1.13.1.8"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
-	case Ruijie:
+	case Ruijie, Ruijie_S5700, Ruijie_S1900:
 		oid = "1.3.6.1.4.1.4881.1.1.10.2.36.1.1.2"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case Dell:
@@ -75,8 +75,14 @@ func CpuUtilization(ip, community string, timeout, retry int) (uint64, error) {
 		oid = "1.3.6.1.4.1.12356.101.4.1.3"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case Sundray:
-		oid = "1.3.6.1.4.1.2021.11.11.0"
+		oid = "1.3.6.1.2.1.25.3.3.1.2.196608"
 		return getSundrayCpu(ip, community, oid, timeout, retry)
+	case Sundray_WAC:
+		oid = "1.3.6.1.4.1.45577.1.3.0"
+		return getSundrayCpu(ip, community, oid, timeout, retry)
+	case Sangfor_AF:
+		oid = "1.3.6.1.2.1.1.11.0"
+		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	default:
 		err = errors.New(ip + " Switch Cpu Vendor is not defined")
 		return 0, err
@@ -139,7 +145,7 @@ func getSundrayCpu(ip, community, oid string, timeout, retry int) (uint64, error
 	if err != nil {
 		return 0, err
 	}
-	return 100 - ssCpuIdle, err
+	return ssCpuIdle, err
 }
 
 func getFortiGatecpumem(ip, community, oid string, timeout, retry int) (value uint64, err error) {

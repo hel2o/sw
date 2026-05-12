@@ -3,8 +3,10 @@ package sw
 import (
 	"errors"
 	"github.com/gosnmp/gosnmp"
+	"github.com/spf13/cast"
 	"log"
 	"strconv"
+	"strings"
 )
 
 func MemUtilization(ip, community string, timeout, retry int) (uint64, error) {
@@ -60,7 +62,7 @@ func MemUtilization(ip, community string, timeout, retry int) (uint64, error) {
 	case FutureMatrix:
 		oid = "1.3.6.1.4.1.56813.5.25.31.1.1.1.1.7"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
-	case Huawei, Huawei_V5, Huawei_V5_70, Huawei_V5_130, Huawei_V5_150, Huawei_V5_170:
+	case Huawei_YunShan, Huawei, Huawei_V5, Huawei_V5_70, Huawei_V5_130, Huawei_V5_150, Huawei_V5_170:
 		oid = "1.3.6.1.4.1.2011.5.25.31.1.1.1.1.7"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case Huawei_V3_10:
@@ -81,14 +83,21 @@ func MemUtilization(ip, community string, timeout, retry int) (uint64, error) {
 	case Juniper:
 		oid = "1.3.6.1.4.1.2636.3.1.13.1.11"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
-	case Ruijie:
+	case Ruijie, Ruijie_S5700, Ruijie_S1900:
 		oid = "1.3.6.1.4.1.4881.1.1.10.2.35.1.1.1.3"
 		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case Dell:
 		return GetDellMem(ip, community, timeout, retry)
+	case Sangfor_AF:
+		oid = "1.3.6.1.2.1.1.12.0"
+		return getCpuMemTemp(ip, community, oid, timeout, retry)
 	case FortiGate:
 		oid = "1.3.6.1.4.1.12356.101.4.1.4"
 		return getFortiGatecpumem(ip, community, oid, timeout, retry)
+	case Sundray:
+		return getSundray_Mem(ip, community, timeout, retry)
+	case Sundray_WAC:
+		return getSundrayWAC_Mem(ip, community, timeout, retry)
 	default:
 		err = errors.New(ip + " Switch Mem Vendor is not defined")
 		return 0, err
@@ -251,4 +260,45 @@ func GetLinuxMem(ip, community string, timeout, retry int) (uint64, error) {
 		return uint64(memUtili * 100), nil
 	}
 	return 0, err
+}
+func getSundray_Mem(ip, community string, timeout, retry int) (uint64, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println(ip+" Recovered in MemUtilization", r)
+		}
+	}()
+	method := snmpWalk
+	memTotalOid := ".1.3.6.1.2.1.25.2.3.1.5.3"
+	snmpMemTotal, err := RunSnmp(ip, community, memTotalOid, method, retry, timeout)
+	memUsedOid := ".1.3.6.1.2.1.25.2.3.1.6.3"
+	snmpUsed, err := RunSnmp(ip, community, memUsedOid, method, retry, timeout)
+	if len(snmpUsed) == 0 || len(snmpMemTotal) == 0 {
+		err := errors.New(ip + " No Such Object available on this agent at this OID")
+		return 0, err
+	} else {
+		memTotal := snmpMemTotal[0].Value.(int)
+		memUsed := snmpUsed[0].Value.(int)
+		if memTotal != 0 {
+			memUtili := (float64(memUsed) / float64(memTotal)) * 100
+			return uint64(memUtili), err
+		}
+	}
+	return 0, err
+}
+
+func getSundrayWAC_Mem(ip, community string, timeout, retry int) (uint64, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println(ip+" Recovered in MemUtilization", r)
+		}
+	}()
+	method := snmpWalk
+	memOid := ".1.3.6.1.4.1.45577.1.15.0"
+	snmpMem, err := RunSnmp(ip, community, memOid, method, retry, timeout)
+	if err != nil {
+		return 0, err
+	}
+	ms := strings.Replace(string(snmpMem[0].Value.([]uint8)), "%", "", -1)
+	return cast.ToUint64(ms), nil
+
 }

@@ -19,27 +19,32 @@ var (
 	ifHCOutOid       = []string{"1.3.6.1.2.1.31.1.1.1.10"}
 	ifHCOutOidPrefix = ".1.3.6.1.2.1.31.1.1.1.10."
 
-	ifHCInPktsOid       = []string{"1.3.6.1.2.1.31.1.1.1.7"}
-	ifHCInPktsOidPrefix = ".1.3.6.1.2.1.31.1.1.1.7."
-	ifHCOutPktsOid      = []string{"1.3.6.1.2.1.31.1.1.1.11"}
+	ifHCInPktsOid        = []string{"1.3.6.1.2.1.31.1.1.1.7"}
+	ifHCInPktsOidPrefix  = ".1.3.6.1.2.1.31.1.1.1.7."
+	ifHCOutPktsOid       = []string{"1.3.6.1.2.1.31.1.1.1.11"}
+	ifHCOutPktsOidPrefix = ".1.3.6.1.2.1.31.1.1.1.11."
 	//up(1),down(2)
-	ifOperStatusOid              = []string{"1.3.6.1.2.1.2.2.1.8"}
-	ifOperStatusOidPrefix        = ".1.3.6.1.2.1.2.2.1.8."
-	ifHCInBroadcastPktsOid       = []string{"1.3.6.1.2.1.31.1.1.1.9"}
-	ifHCInBroadcastPktsOidPrefix = ".1.3.6.1.2.1.31.1.1.1.9."
-	ifHCOutBroadcastPktsOid      = []string{"1.3.6.1.2.1.31.1.1.1.13"}
+	ifOperStatusOid               = []string{"1.3.6.1.2.1.2.2.1.8"}
+	ifOperStatusOidPrefix         = ".1.3.6.1.2.1.2.2.1.8."
+	ifHCInBroadcastPktsOid        = []string{"1.3.6.1.2.1.31.1.1.1.9"}
+	ifHCInBroadcastPktsOidPrefix  = ".1.3.6.1.2.1.31.1.1.1.9."
+	ifHCOutBroadcastPktsOid       = []string{"1.3.6.1.2.1.31.1.1.1.13"}
+	ifHCOutBroadcastPktsOidPrefix = ".1.3.6.1.2.1.31.1.1.1.13."
 	// multicastpkt
-	ifHCInMulticastPktsOid       = []string{"1.3.6.1.2.1.31.1.1.1.8"}
-	ifHCInMulticastPktsOidPrefix = ".1.3.6.1.2.1.31.1.1.1.8."
-	ifHCOutMulticastPktsOid      = []string{"1.3.6.1.2.1.31.1.1.1.12"}
+	ifHCInMulticastPktsOid        = []string{"1.3.6.1.2.1.31.1.1.1.8"}
+	ifHCInMulticastPktsOidPrefix  = ".1.3.6.1.2.1.31.1.1.1.8."
+	ifHCOutMulticastPktsOid       = []string{"1.3.6.1.2.1.31.1.1.1.12"}
+	ifHCOutMulticastPktsOidPrefix = ".1.3.6.1.2.1.31.1.1.1.12."
+
 	// speed 配置
 	ifSpeedOid       = []string{"1.3.6.1.2.1.31.1.1.1.15"}
 	ifSpeedOidPrefix = ".1.3.6.1.2.1.31.1.1.1.15."
 
 	// Discards配置
-	ifInDiscardsOid       = []string{"1.3.6.1.2.1.2.2.1.13"}
-	ifInDiscardsOidPrefix = ".1.3.6.1.2.1.2.2.1.13."
-	ifOutDiscardsOid      = []string{"1.3.6.1.2.1.2.2.1.19"}
+	ifInDiscardsOid        = []string{"1.3.6.1.2.1.2.2.1.13"}
+	ifInDiscardsOidPrefix  = ".1.3.6.1.2.1.2.2.1.13."
+	ifOutDiscardsOid       = []string{"1.3.6.1.2.1.2.2.1.19"}
+	ifOutDiscardsOidPrefix = ".1.3.6.1.2.1.2.2.1.19."
 
 	// Errors配置
 	ifInErrorsOid        = []string{"1.3.6.1.2.1.2.2.1.14"}
@@ -467,16 +472,27 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 				if ignoreIfStats.IgnorePkt == false {
 					for ti, ifHCInPktsPDU := range ifInPktList {
 						if strings.Replace(ifHCInPktsPDU.Name, ifHCInPktsOidPrefix, "", 1) == ifIndexStr {
-							ifStats.IfHCOutUcastPkts = gosnmp.ToBigInt(ifOutPktList[ti].Value).Uint64()
 							ifStats.IfHCInUcastPkts = gosnmp.ToBigInt(ifInPktList[ti].Value).Uint64()
 							break
 						}
 					}
+					for ti, ifHCOutPktsPDU := range ifOutPktList {
+						if strings.Replace(ifHCOutPktsPDU.Name, ifHCOutPktsOidPrefix, "", 1) == ifIndexStr {
+							ifStats.IfHCOutUcastPkts = gosnmp.ToBigInt(ifOutPktList[ti].Value).Uint64()
+							break
+						}
+					}
 				}
+
 				if ignoreIfStats.IgnoreBroadcastPkt == false {
 					for ti, ifHCInBroadcastPktPDU := range ifInBroadcastPktList {
 						if strings.Replace(ifHCInBroadcastPktPDU.Name, ifHCInBroadcastPktsOidPrefix, "", 1) == ifIndexStr {
 							ifStats.IfHCInBroadcastPkts = gosnmp.ToBigInt(ifInBroadcastPktList[ti].Value).Uint64()
+							break
+						}
+					}
+					for ti, ifHCOutBroadcastPktPDU := range ifOutBroadcastPktList {
+						if strings.Replace(ifHCOutBroadcastPktPDU.Name, ifHCOutBroadcastPktsOidPrefix, "", 1) == ifIndexStr {
 							ifStats.IfHCOutBroadcastPkts = gosnmp.ToBigInt(ifOutBroadcastPktList[ti].Value).Uint64()
 							break
 						}
@@ -486,8 +502,12 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 					for ti, ifHCInMulticastPktPDU := range ifInMulticastPktList {
 						if strings.Replace(ifHCInMulticastPktPDU.Name, ifHCInMulticastPktsOidPrefix, "", 1) == ifIndexStr {
 							ifStats.IfHCInMulticastPkts = gosnmp.ToBigInt(ifInMulticastPktList[ti].Value).Uint64()
-							ifStats.IfHCOutMulticastPkts = gosnmp.ToBigInt(ifOutMulticastPktList[ti].Value).Uint64()
 							break
+						}
+					}
+					for ti, ifHCOutMulticastPktPDU := range ifOutMulticastPktList {
+						if strings.Replace(ifHCOutMulticastPktPDU.Name, ifHCOutMulticastPktsOidPrefix, "", 1) == ifIndexStr {
+							ifStats.IfHCOutMulticastPkts = gosnmp.ToBigInt(ifOutMulticastPktList[ti].Value).Uint64()
 						}
 					}
 				}
@@ -496,6 +516,11 @@ func ListIfStats(ip, community string, timeout int, interfaces []string, retry i
 					for ti, ifInDiscardsPDU := range ifInDiscardsList {
 						if strings.Replace(ifInDiscardsPDU.Name, ifInDiscardsOidPrefix, "", 1) == ifIndexStr {
 							ifStats.IfInDiscards = gosnmp.ToBigInt(ifInDiscardsList[ti].Value).Uint64()
+							break
+						}
+					}
+					for ti, ifOutDiscardsPDU := range ifOutDiscardsList {
+						if strings.Replace(ifOutDiscardsPDU.Name, ifOutDiscardsOidPrefix, "", 1) == ifIndexStr {
 							ifStats.IfOutDiscards = gosnmp.ToBigInt(ifOutDiscardsList[ti].Value).Uint64()
 							break
 						}

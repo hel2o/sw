@@ -14,40 +14,43 @@ var (
 )
 
 const (
-	H3C_V5        = "H3C_V5"
-	H3C_V7        = "H3C_V7"
-	H3C_S9500     = "H3C_S9500"
-	H3C_S5500     = "H3C_S5500"
-	H3C_V3_1      = "H3C_V3.1"
-	H3C_ER        = "H3C_ER"
-	H3C_S5024P    = "H3C_S5024P"
-	H3C_S2126T    = "H3C_S2126T"
-	H3C           = "H3C"
-	Cisco_NX      = "Cisco_NX"
-	Cisco_ASA_OLD = "Cisco_ASA_OLD"
-	Cisco_ASA     = "Cisco_ASA"
-	Cisco_IOS_XE  = "Cisco_IOS_XE"
-	Cisco_IOS_XR  = "Cisco_IOS_XR"
-	Cisco_old     = "Cisco_old"
-	Cisco         = "Cisco"
-	Huawei_ME60   = "Huawei_ME60"
-	Huawei_V5     = "Huawei_V5"
-	Huawei_V5_170 = "Huawei_V5.170" //S5720 S7700 S5730 S5735
-	Huawei_V5_150 = "Huawei_V5.150" //S5700 V200R005C10SPC50
-	Huawei_V5_130 = "Huawei_V5.130" //S5700 V200R003C10SPC00
-	Huawei_V5_70  = "Huawei_V5.70"  //S2326 S2700
-	Huawei_V3_10  = "Huawei_V3.10"
-	Huawei        = "Huawei"
-	Ruijie        = "Ruijie"
-	Ruijie_S1900  = "Ruijie_S1900"
-	Ruijie_S5700  = "Ruijie_S5700"
-	Juniper       = "Juniper"
-	Dell          = "Dell"
-	Draytek       = "Draytek"
-	FortiGate     = "FortiGate"
-	Sundray       = "Sundray"
-	Linux         = "Linux"
-	FutureMatrix  = "FutureMatrix"
+	H3C_V5         = "H3C_V5"
+	H3C_V7         = "H3C_V7"
+	H3C_S9500      = "H3C_S9500"
+	H3C_S5500      = "H3C_S5500"
+	H3C_V3_1       = "H3C_V3.1"
+	H3C_ER         = "H3C_ER"
+	H3C_S5024P     = "H3C_S5024P"
+	H3C_S2126T     = "H3C_S2126T"
+	H3C            = "H3C"
+	Cisco_NX       = "Cisco_NX"
+	Cisco_ASA_OLD  = "Cisco_ASA_OLD"
+	Cisco_ASA      = "Cisco_ASA"
+	Cisco_IOS_XE   = "Cisco_IOS_XE"
+	Cisco_IOS_XR   = "Cisco_IOS_XR"
+	Cisco_old      = "Cisco_old"
+	Cisco          = "Cisco"
+	Huawei_ME60    = "Huawei_ME60"
+	Huawei_V5      = "Huawei_V5"
+	Huawei_V5_170  = "Huawei_V5.170" //S5720 S7700 S5730 S5735
+	Huawei_V5_150  = "Huawei_V5.150" //S5700 V200R005C10SPC50
+	Huawei_V5_130  = "Huawei_V5.130" //S5700 V200R003C10SPC00
+	Huawei_V5_70   = "Huawei_V5.70"  //S2326 S2700
+	Huawei_V3_10   = "Huawei_V3.10"
+	Huawei_YunShan = "Huawei_YunShan"
+	Huawei         = "Huawei"
+	Ruijie         = "Ruijie"
+	Ruijie_S1900   = "Ruijie_S1900"
+	Ruijie_S5700   = "Ruijie_S5700"
+	Juniper        = "Juniper"
+	Dell           = "Dell"
+	Draytek        = "Draytek"
+	FortiGate      = "FortiGate"
+	Sundray        = "Sundray"
+	Sundray_WAC    = "Sundray_WAC"
+	Linux          = "Linux"
+	FutureMatrix   = "FutureMatrix"
+	Sangfor_AF     = "Sangfor_AF"
 )
 
 func SystemName(ip, community string, retry int, timeout int) (name string, err error) {
@@ -248,6 +251,10 @@ func VersionDetect(sysDesc string) (version string, err error) {
 			version = Huawei_V5
 			return
 		}
+		if strings.Contains(sysDesc, "YunShan OS") {
+			version = Huawei_YunShan
+			return
+		}
 		if strings.Contains(sysDesc, "Version 3.10") {
 			version = Huawei_V3_10
 			return
@@ -283,9 +290,17 @@ func VersionDetect(sysDesc string) (version string, err error) {
 		version = FortiGate
 		return
 	}
+	if strings.Contains(sysDescLower, "sangfor af") || strings.Contains(sysDescLower, "linux sfos-x86_64") {
+		version = Sangfor_AF
+		return
+	}
 	if strings.Contains(sysDescLower, "linux") {
 		if strings.Contains(sysDescLower, "armv7l") {
 			version = Sundray
+			return
+		}
+		if strings.Contains(sysDescLower, "linux wac") {
+			version = Sundray_WAC
 			return
 		}
 		version = Linux
@@ -310,13 +325,15 @@ func getVersionNumber(sysdescr string) string {
 }
 
 func SysPatchInfo(ip, community string, retry int, timeout int) (patch string, err error) {
-	oid := "1.3.6.1.4.1.2011.5.25.19.1.8.5.1.1.4"
-	method := snmpBulkWalk
-	var snmpPDUs []gosnmp.SnmpPDU
-	snmpPDUs, err = RunSnmp(ip, community, oid, method, retry, timeout)
+	var chSnmpPDUs = make(chan []gosnmp.SnmpPDU)
+	limitCh := make(chan bool, 1)
+	limitCh <- true
+	go RunSnmpRetry(ip, community, timeout, chSnmpPDUs, retry, limitCh, true, []string{"1.3.6.1.4.1.2011.5.25.19.1.8.5.1.1.4", "1.3.6.1.4.1.56813.5.25.19.1.8.5.1.1.4"})
+	snmpPDUs := <-chSnmpPDUs
 	for i, pdu := range snmpPDUs {
-		if len(string(pdu.Value.([]byte))) > 0 {
+		if pdu.Value != nil && len(string(pdu.Value.([]byte))) > 0 {
 			patch = fmt.Sprintf("%s<br>slot%d patch: %s", patch, i, string(pdu.Value.([]byte)))
+			break
 		}
 	}
 	return
